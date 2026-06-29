@@ -1,0 +1,29 @@
+# Virtual environment
+.venv/
+venv/
+
+# API keys — NEVER commit
+.env
+
+# Data — too large for GitHub, always regeneratable
+data/raw/
+data/chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Environment variables
+*.env
