@@ -19,7 +19,7 @@ EVAL_SAMPLE_SIZE = 1000
 
 # --- Models ------------------------------------------------------------------
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
-DEV_MODEL       = "openai/gpt-oss-20b"   # Groq — development only (free)
+DEV_MODEL       = "qwen/qwen3.6-27b"   # Groq — development only (free)
 EVAL_MODEL      = "gpt-4o-mini"      # OpenAI — final evaluation
 JUDGE_MODEL     = "gpt-4o"           # OpenAI — LLM-as-judge only
 
