@@ -4,9 +4,12 @@
 # Pure string logic only — no imports from elsewhere in src/
 # =============================================================================
 
+import re
+
 def validate_yes_no(response: str) -> str | None:
     """
     Validate that an LLM response starts with YES or NO.
+    Handles reasoning models that wrap output in <think>...</think> tags.
 
     Args:
         response: Raw text response from the LLM
@@ -17,8 +20,15 @@ def validate_yes_no(response: str) -> str | None:
     if not response:
         return None
 
-    # Strip whitespace and common markdown formatting characters (*, _, #)
-    cleaned = response.strip().upper()
+    # Strip <think>...</think> blocks (reasoning model output)
+    cleaned = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+
+    # If nothing left after stripping think blocks, use original
+    if not cleaned:
+        cleaned = response.strip()
+
+    # Strip whitespace and common markdown formatting characters
+    cleaned = cleaned.upper()
     cleaned = cleaned.lstrip("*_# ")
 
     if cleaned.startswith("YES"):

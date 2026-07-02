@@ -26,9 +26,6 @@ def classify(question: str, model: str = DEV_MODEL) -> dict:
             - classification: 'YES' or 'NO'
             - explanation: the full LLM response text
             - input_tokens, output_tokens: for logging
-
-    Raises:
-        Exception if validation fails after 3 retries
     """
     prompt = CLASSIFICATION_PROMPT_TEMPLATE.format(question=question)
 
@@ -37,7 +34,7 @@ def classify(question: str, model: str = DEV_MODEL) -> dict:
     total_output_tokens = 0
 
     for attempt in range(max_retries):
-        llm_result = call_llm(prompt, model=model, max_tokens=400, temperature=0.0)
+        llm_result = call_llm(prompt, model=model, max_tokens=2000, temperature=0.0)
         total_input_tokens += llm_result["input_tokens"]
         total_output_tokens += llm_result["output_tokens"]
 
@@ -53,7 +50,14 @@ def classify(question: str, model: str = DEV_MODEL) -> dict:
 
         print(f"Hop classification invalid (attempt {attempt + 1}/{max_retries}): {llm_result['text'][:100]}")
 
-    # All retries failed — log and raise
-    raise Exception(
-        f"Hop classification failed validation after {max_retries} attempts for question: {question}"
-    )
+    # All retries failed — fall back to YES (assume multi-hop needed)
+    # This is safer than crashing: the system will attempt multi-hop retrieval
+    # rather than giving up entirely. The fallback is logged for failure analysis.
+    print(f"Hop classification failed after {max_retries} attempts. "
+          f"Defaulting to YES (multi-hop) for: {question[:80]}")
+    return {
+        "classification": "YES",
+        "explanation": "FALLBACK: classification failed validation after max retries",
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens
+    }

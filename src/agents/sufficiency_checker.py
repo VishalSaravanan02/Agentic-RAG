@@ -9,14 +9,14 @@ from src.core.llm_client import call_llm
 from src.agents.output_validator import validate_yes_no
 from src.core.config import DEV_MODEL
 
-SUFFICIENCY_PROMPT_TEMPLATE = """Given the original question and the information retrieved so far, do you have enough information to produce a complete and accurate answer? Answer YES or NO and explain what is still missing.
+SUFFICIENCY_PROMPT_TEMPLATE = """Given the original question and the information retrieved so far, do you have enough information to produce a complete and accurate answer? You MUST begin your response with the single word YES or NO, then explain what is still missing (or why it is sufficient).
 
 Original question: {question}
 
 Information retrieved so far:
 {context}
 
-Answer:"""
+Begin your answer with YES or NO:"""
 
 def check(question: str, accumulated_context: str, model: str = DEV_MODEL) -> dict:
     """
@@ -46,7 +46,7 @@ def check(question: str, accumulated_context: str, model: str = DEV_MODEL) -> di
     total_output_tokens = 0
 
     for attempt in range(max_retries):
-        llm_result = call_llm(prompt, model=model, max_tokens=600, temperature=0.0)
+        llm_result = call_llm(prompt, model=model, max_tokens=2000, temperature=0.0)
         total_input_tokens += llm_result["input_tokens"]
         total_output_tokens += llm_result["output_tokens"]
 
@@ -60,8 +60,7 @@ def check(question: str, accumulated_context: str, model: str = DEV_MODEL) -> di
                 "output_tokens": total_output_tokens
             }
 
-        print(f"Sufficiency check invalid (attempt {attempt + 1}/{max_retries}): "
-              f"{llm_result['text'][:100]}")
+        print(f"Sufficiency check invalid (attempt {attempt + 1}/{max_retries}): {llm_result['text'][:100]}")
 
     raise Exception(
         f"Sufficiency check failed validation after {max_retries} attempts for question: {question}"
