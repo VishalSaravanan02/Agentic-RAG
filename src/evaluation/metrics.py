@@ -175,18 +175,6 @@ def compute_efficiency(results: list[dict], split: str) -> dict:
 
 def compute_all(system_name: str, split: str,
                 hotpotqa_data: list[dict] = None) -> dict:
-    """
-    Compute all metrics for a system/split combination.
-
-    Args:
-        system_name:   'baseline_a' or 'main_system'
-        split:         'dev' or 'eval'
-        hotpotqa_data: The original HotpotQA questions (for supporting facts).
-                       If None, supporting facts metrics are skipped.
-
-    Returns:
-        dict with all computed metrics
-    """
     results = load_results(system_name, split)
 
     if not results:
@@ -194,4 +182,102 @@ def compute_all(system_name: str, split: str,
         return {}
 
     n = len(results)
-    print(f"Computing metrics for {system_name} on {split} ({n}
+    print(f"Computing metrics for {system_name} on {split} ({n} questions)...")
+
+    # Build lookup for HotpotQA data by question ID
+    hpqa_lookup = {}
+    if hotpotqa_data:
+        hpqa_lookup = {q["id"]: q for q in hotpotqa_data}
+
+    # Per-question metrics
+    em_scores  = []
+    f1_scores  = []
+    r_at_k     = []
+    sf_recalls = []
+    ret_precs  = []
+
+    for r in results:
+        predicted = r.get("final_answer", "")
+        gold      = r.get("gold_answer", "")
+        qid       = r.get("question_id", "")
+        hpqa_item = hpqa_lookup.get(qid, {})
+
+        em_scores.append(exact_match(predicted, gold))
+        f1_scores.append(f1_score(predicted, gold))
+        r_at_k.append(recall_at_k(r))
+
+        if hpqa_item:
+            sf_recalls.append(supporting_facts_recall(r, hpqa_item))
+            ret_precs.append(retrieval_precision(r, hpqa_item))
+
+    # Aggregate
+    metrics = {
+        "system":          system_name,
+        "split":           split,
+        "n_questions":     n,
+        "answer_quality": {
+            "exact_match": round(sum(em_scores) / n, 4),
+            "f1":          round(sum(f1_scores) / n, 4),
+        },
+        "retrieval_quality": {
+            "recall_at_k":             round(sum(r_at_k) / n, 4),
+            "supporting_facts_recall": round(sum(sf_recalls) / len(sf_recalls), 4) if sf_recalls else None,
+            "retrieval_precision":     round(sum(ret_precs) / len(ret_precs), 4) if ret_precs else None,
+        },
+        "efficiency": compute_efficiency(results, split),
+    }
+
+    # Hop distribution (main system only)
+    if system_name == "main_system":
+        hop_counts = [r.get("num_hops", 1) for r in results]
+        hop_dist   = Counter(hop_counts)
+        stop_conds = Counter(r.get("stop_condition_triggered", "unknown") for r in results)
+        hop_class  = Counter(r.get("hop_necessity_classification", "N/A") for r in results)
+        metrics["hop_analysis"] = {
+            "hop_distribution":                dict(sorted(hop_dist.items())),
+            "stop_condition_distribution":     dict(stop_conds),
+            "hop_classification_distribution": dict(hop_class),
+            "avg_hops":                        round(sum(hop_counts) / n, 2),
+        }
+
+    return metrics
+
+
+def print_comparison(baseline_metrics: dict, main_metrics: dict):
+    """Print a formatted comparison table of two systems."""
+    print(f"\n{'='*65}")
+    print(f"{'METRIC':<35} {'BASELINE A':>12} {'MAIN SYSTEM':>14}")
+    print(f"{'='*65}")
+
+    print(f"\n--- Answer Quality ---")
+    baq = baseline_metrics.get("answer_quality", {})
+    maq = main_metrics.get("answer_quality", {})
+    print(f"{'Exact Match':<35} {baq.get('exact_match', 0):>12.4f} {maq.get('exact_match', 0):>14.4f}")
+    print(f"{'F1 Score':<35} {baq.get('f1', 0):>12.4f} {maq.get('f1', 0):>14.4f}")
+
+    print(f"\n--- Retrieval Quality ---")
+    brq = baseline_metrics.get("retrieval_quality", {})
+    mrq = main_metrics.get("retrieval_quality", {})
+    print(f"{'Recall@k':<35} {brq.get('recall_at_k', 0):>12.4f} {mrq.get('recall_at_k', 0):>14.4f}")
+    sf_b = brq.get('supporting_facts_recall')
+    sf_m = mrq.get('supporting_facts_recall')
+    print(f"{'Supporting Facts Recall':<35} {str(round(sf_b,4)) if sf_b else 'N/A':>12} {str(round(sf_m,4)) if sf_m else 'N/A':>14}")
+    rp_b = brq.get('retrieval_precision')
+    rp_m = mrq.get('retrieval_precision')
+    print(f"{'Retrieval Precision':<35} {str(round(rp_b,4)) if rp_b else 'N/A':>12} {str(round(rp_m,4)) if rp_m else 'N/A':>14}")
+
+    print(f"\n--- Efficiency ---")
+    bef = baseline_metrics.get("efficiency", {})
+    mef = main_metrics.get("efficiency", {})
+    print(f"{'Avg Latency (ms)':<35} {bef.get('avg_latency_ms', 0):>12.1f} {mef.get('avg_latency_ms', 0):>14.1f}")
+    print(f"{'Avg Input Tokens':<35} {bef.get('avg_input_tokens', 0):>12.1f} {mef.get('avg_input_tokens', 0):>14.1f}")
+    print(f"{'Avg Output Tokens':<35} {bef.get('avg_output_tokens', 0):>12.1f} {mef.get('avg_output_tokens', 0):>14.1f}")
+
+    if "hop_analysis" in main_metrics:
+        print(f"\n--- Main System Hop Analysis ---")
+        ha = main_metrics["hop_analysis"]
+        print(f"{'Avg Hops':<35} {'N/A':>12} {ha.get('avg_hops', 0):>14.2f}")
+        print(f"{'Hop Distribution':<35} {'':>12} {str(ha.get('hop_distribution', {})):>14}")
+        print(f"{'Stop Conditions':<35} {'':>12} {str(ha.get('stop_condition_distribution', {})):>14}")
+
+    print(f"\n{'='*65}\n")
