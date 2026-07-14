@@ -62,7 +62,7 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
     total_output_tokens = 0
 
     for attempt in range(max_retries):
-        llm_result = call_llm(prompt, model=model, max_tokens=400, temperature=0.0)
+        llm_result = call_llm(prompt, model=model, max_tokens=2000, temperature=0.0)
         total_input_tokens += llm_result["input_tokens"]
         total_output_tokens += llm_result["output_tokens"]
 
