@@ -11,12 +11,14 @@ from src.core.config import DEV_MODEL
 
 SYNTHESIS_PROMPT_TEMPLATE = """Answer the question using only the information retrieved below. Do not use any outside knowledge. If the retrieved information is not enough, say so explicitly.
 
+Give ONLY the short answer — a name, date, place, yes/no, or short phrase. Do not write a full sentence or explanation.
+
 Question: {question}
 
 Retrieved information:
 {context}
 
-Answer:"""
+Short answer:"""
 
 def _strip_think_tags(text: str) -> str:
     """Strip <think>...</think> blocks from reasoning model output."""

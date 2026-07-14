@@ -9,6 +9,8 @@ from src.core.config import DEV_MODEL
 
 DECOMPOSITION_PROMPT_TEMPLATE = """Break this question into a sequence of simpler sub-questions that must be answered in order. Return them as a numbered list.
 
+Each sub-question must be a self-contained factual lookup that names specific entities from the question. Do NOT include comparison, reasoning, or analysis steps (e.g. "how do they compare" or "based on the above") — only questions that retrieve a specific fact.
+
 Question: {question}
 
 Sub-questions:"""

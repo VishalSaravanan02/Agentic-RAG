@@ -12,12 +12,14 @@ from src.agents.answer_synthesizer import _strip_think_tags
 
 SYNTHESIS_PROMPT_TEMPLATE = """Answer the question using only the information retrieved below. Do not use any outside knowledge. If the retrieved information is not enough, say so explicitly.
 
+Give ONLY the short answer — a name, date, place, yes/no, or short phrase. Do not write a full sentence or explanation.
+
 Question: {question}
 
 Retrieved information:
 {context}
 
-Answer:"""
+Short answer:"""
 
 def run_baseline_a(question: str, question_id: str, gold_answer: str, model: str = DEV_MODEL) -> dict:
     """
