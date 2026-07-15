@@ -9,7 +9,15 @@ from src.core.config import DEV_MODEL
 
 DECOMPOSITION_PROMPT_TEMPLATE = """Break this question into a sequence of simpler sub-questions that must be answered in order. Return them as a numbered list.
 
-Each sub-question must be a self-contained factual lookup that names specific entities from the question. Do NOT include comparison, reasoning, or analysis steps (e.g. "how do they compare" or "based on the above") — only questions that retrieve a specific fact.
+Rules:
+- Each sub-question must be a self-contained factual lookup that names specific entities.
+- Do NOT include comparison, reasoning, or analysis steps — only questions that retrieve a specific fact.
+- Every sub-question must be fully written out and searchable on its own. Never refer to another sub-question or its answer. If a later lookup depends on something unknown, describe that thing using the identifying details given in the original question.
+
+Example: for "What year was the university attended by the author of the novel Middlemarch founded?", good sub-questions are:
+1. Who is the author of the novel Middlemarch?
+2. What university did the author of the novel Middlemarch attend?
+3. What year was the university attended by the author of the novel Middlemarch founded?
 
 Question: {question}
 
@@ -44,20 +52,15 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
     """
     Break a question into an ordered list of sub-questions.
 
-    Args:
-        question: The question text
-        model:    Which LLM to use
-
-    Returns:
-        dict with keys:
-            - sub_questions: list of strings (ordered)
-            - input_tokens, output_tokens: for logging
-
-    Note: If parsing fails after 3 retries, falls back to
-          treating the original question as a single sub-question
-          (graceful degradation rather than crashing the pipeline).
+    Validation: at least 2 sub-questions, none containing placeholders
+    or references to other sub-questions. On validation failure, the
+    retry includes corrective feedback (at temperature 0, retrying an
+    identical prompt reproduces the identical output — the prompt must
+    change for the retry to be useful). Falls back to the original
+    question as a single sub-query after 3 failed attempts.
     """
-    prompt = DECOMPOSITION_PROMPT_TEMPLATE.format(question=question)
+    base_prompt = DECOMPOSITION_PROMPT_TEMPLATE.format(question=question)
+    prompt = base_prompt
 
     max_retries = 3
     total_input_tokens = 0
@@ -70,7 +73,17 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
 
         sub_questions = _parse_numbered_list(llm_result["text"])
 
-        if len(sub_questions) >= 2:
+        # Contract enforcement: reject placeholder/self-referential sub-questions
+        bad_patterns = ["[", "]", "sub-question", "identified above",
+                        "mentioned above", "from the previous", "the answer to",
+                        "in the question", "from the question",
+                        "aforementioned", "the above"]
+        has_bad = any(
+            any(p in sq.lower() for p in bad_patterns)
+            for sq in sub_questions
+        )
+
+        if len(sub_questions) >= 2 and not has_bad:
             return {
                 "sub_questions": sub_questions,
                 "input_tokens": total_input_tokens,
@@ -78,7 +91,19 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
             }
 
         print(f"Decomposition invalid (attempt {attempt + 1}/{max_retries}): "
-              f"got {len(sub_questions)} sub-questions, need at least 2")
+              f"got {len(sub_questions)} sub-questions"
+              f"{', contains placeholder/reference' if has_bad else ''}")
+
+        # Corrective feedback: change the prompt so the retry differs
+        if has_bad:
+            prompt = base_prompt + (
+                "\n\nIMPORTANT: Your previous attempt used placeholders or "
+                "references to other sub-questions (such as bracketed text "
+                "or phrases like 'from sub-question 1'). That is not allowed. "
+                "Rewrite ALL sub-questions so each one is fully self-contained "
+                "and searchable, repeating the identifying details from the "
+                "original question wherever an unknown entity is needed."
+            )
 
     # Fallback: treat the original question as a single sub-question
     print(f"Decomposition failed after {max_retries} attempts. "

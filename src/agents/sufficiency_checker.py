@@ -24,6 +24,9 @@ Instructions:
 
 You MUST begin your response with the single word YES or NO, then list which facts are present and which are missing.
 
+If you answer NO, end your response with a single line in exactly this format:
+MISSING: <a short, self-contained search query describing only the missing information>
+
 Begin your answer with YES or NO:"""
 
 def check(question: str, accumulated_context: str, model: str = DEV_MODEL) -> dict:

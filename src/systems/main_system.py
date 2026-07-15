@@ -141,8 +141,14 @@ def run_main_system(question: str, question_id: str, gold_answer: str,
                 # Planned sub-queries still remain
                 next_query = sub_queries_generated[sub_query_index]
             else:
-                # Sub-queries exhausted — reactive mode using "missing" explanation
-                next_query = sufficiency_result["missing"]
+                # Reactive mode: use only the extracted missing-information
+                # query, not the full sufficiency explanation (which lists
+                # facts already present and pollutes the retrieval embedding)
+                missing_text = sufficiency_result["missing"]
+                if "MISSING:" in missing_text:
+                    next_query = missing_text.rsplit("MISSING:", 1)[1].strip()
+                else:
+                    next_query = missing_text  # fallback: previous behaviour
 
     # --- DECISION 5: Grounded answer synthesis -------------------------------
     final_context = "\n\n".join(_format_chunk(d) for d in all_retrieved_chunks)
