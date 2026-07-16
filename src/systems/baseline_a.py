@@ -8,15 +8,18 @@ from src.core.retriever import retrieve
 from src.core.llm_client import call_llm
 from src.core.logger import log_result
 from src.core.config import TOP_K, EVAL_MODEL, DEV_MODEL
+from src.agents.answer_synthesizer import _strip_think_tags
 
 SYNTHESIS_PROMPT_TEMPLATE = """Answer the question using only the information retrieved below. Do not use any outside knowledge. If the retrieved information is not enough, say so explicitly.
+
+Give ONLY the short answer — a name, date, place, yes/no, or short phrase. Do not write a full sentence or explanation.
 
 Question: {question}
 
 Retrieved information:
 {context}
 
-Answer:"""
+Short answer:"""
 
 def run_baseline_a(question: str, question_id: str, gold_answer: str, model: str = DEV_MODEL) -> dict:
     """
@@ -44,7 +47,7 @@ def run_baseline_a(question: str, question_id: str, gold_answer: str, model: str
 
     # Step 3: Synthesize answer
     prompt = SYNTHESIS_PROMPT_TEMPLATE.format(question=question, context=context)
-    llm_result = call_llm(prompt, model=model, max_tokens=256, temperature=0.0)
+    llm_result = call_llm(prompt, model=model, max_tokens=2000, temperature=0.0)
 
     total_latency_ms = (time.time() - start_time) * 1000
 
@@ -62,7 +65,7 @@ def run_baseline_a(question: str, question_id: str, gold_answer: str, model: str
         "output_tokens": llm_result["output_tokens"],
         "latency_per_hop_ms": [total_latency_ms],
         "total_latency_ms": total_latency_ms,
-        "final_answer": llm_result["text"],
+        "final_answer": _strip_think_tags(llm_result["text"]),
         "gold_answer": gold_answer
     }
 

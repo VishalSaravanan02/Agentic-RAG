@@ -9,12 +9,23 @@ from src.core.llm_client import call_llm
 from src.agents.output_validator import validate_yes_no
 from src.core.config import DEV_MODEL
 
-SUFFICIENCY_PROMPT_TEMPLATE = """Given the original question and the information retrieved so far, do you have enough information to produce a complete and accurate answer? You MUST begin your response with the single word YES or NO, then explain what is still missing (or why it is sufficient).
+SUFFICIENCY_PROMPT_TEMPLATE = """You are checking whether the retrieved information is enough to fully answer the question.
 
 Original question: {question}
 
 Information retrieved so far:
 {context}
+
+Instructions:
+1. Identify the specific facts needed to answer the question completely
+2. For each required fact, check whether it is EXPLICITLY STATED in the retrieved information above
+3. Answer YES only if ALL required facts are explicitly present in the text
+4. Answer NO if ANY required fact is missing, implied but not stated, or requires outside knowledge
+
+You MUST begin your response with the single word YES or NO, then list which facts are present and which are missing.
+
+If you answer NO, end your response with a single line in exactly this format:
+MISSING: <a short, self-contained search query describing only the missing information>
 
 Begin your answer with YES or NO:"""
 
