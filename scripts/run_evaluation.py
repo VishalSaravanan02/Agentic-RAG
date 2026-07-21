@@ -1,6 +1,7 @@
 # =============================================================================
 # run_evaluation.py — Runs a system on a question set with checkpointing
 # Usage: python scripts/run_evaluation.py --system baseline_a --split dev
+#        python scripts/run_evaluation.py --system baseline_b --split dev
 #        python scripts/run_evaluation.py --system main_system --split dev
 # =============================================================================
 
@@ -21,6 +22,7 @@ from src.core.config import (
 )
 from src.core.logger import get_completed_ids
 from src.systems.baseline_a import run_and_log_baseline_a
+from src.systems.baseline_b import run_and_log_baseline_b
 from src.systems.main_system import run_and_log_main_system
 
 
@@ -34,7 +36,7 @@ def get_question_path(split: str) -> str:
 
 
 def get_model(split: str) -> str:
-    """Dev split uses Groq (free). Eval split uses GPT-4o-mini (paid)."""
+    """Dev split uses DEV_MODEL. Eval split uses EVAL_MODEL."""
     if split == "dev":
         return DEV_MODEL
     else:
@@ -124,6 +126,14 @@ def run_evaluation(system_name: str, split: str):
                     split=split,
                     model=model
                 )
+            elif system_name == "baseline_b":
+                run_and_log_baseline_b(
+                    question=question,
+                    question_id=question_id,
+                    gold_answer=gold_answer,
+                    split=split,
+                    model=model
+                )
             elif system_name == "main_system":
                 run_and_log_main_system(
                     question=question,
@@ -164,7 +174,8 @@ def run_evaluation(system_name: str, split: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run evaluation on a system and split")
-    parser.add_argument("--system", required=True, choices=["baseline_a", "main_system"],
+    parser.add_argument("--system", required=True,
+                        choices=["baseline_a", "baseline_b", "main_system"],
                         help="Which system to run")
     parser.add_argument("--split", required=True, choices=["dev", "eval"],
                         help="Which question split to use")
