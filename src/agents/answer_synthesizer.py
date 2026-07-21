@@ -30,7 +30,7 @@ def synthesize(question: str, context: str, model: str = DEV_MODEL) -> dict:
     Generate the final grounded answer from accumulated retrieved context.
     """
     prompt = SYNTHESIS_PROMPT_TEMPLATE.format(question=question, context=context)
-    llm_result = call_llm(prompt, model=model, max_tokens=600, temperature=0.0)
+    llm_result = call_llm(prompt, model=model, max_tokens=2000, temperature=0.0)
 
     # Strip <think> tags — reasoning models output thinking before the actual answer
     clean_answer = _strip_think_tags(llm_result["text"])
