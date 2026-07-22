@@ -112,3 +112,25 @@ def test_main_system_multi_hop_path():
     if result["hop_necessity_classification"] == "YES":
         assert len(result["sub_queries_generated"]) >= 1
         assert result["stop_condition_triggered"] in ["sufficiency", "max_hops"]
+
+
+# --- Test 7: queries_per_hop is present and aligned with docs_retrieved_per_hop
+def test_main_system_queries_per_hop_aligned():
+    result = run_main_system(
+        question="Who was the director of the film that won the Academy Award for Best Picture in 2020?",
+        question_id="pytest_main_007",
+        gold_answer="Bong Joon-ho",
+        model=DEV_MODEL
+    )
+    # Field must exist and be a list of the actual queries issued
+    assert "queries_per_hop" in result, "Missing field: queries_per_hop"
+    assert isinstance(result["queries_per_hop"], list)
+
+    # The whole point of the field: query i produced docs i. If these lists
+    # ever fall out of sync, the field is meaningless — so guard the invariant.
+    assert len(result["queries_per_hop"]) == len(result["docs_retrieved_per_hop"]), \
+        "queries_per_hop and docs_retrieved_per_hop must have one entry per hop"
+
+    # Every logged query is a non-empty string
+    for q in result["queries_per_hop"]:
+        assert isinstance(q, str) and len(q) > 0

@@ -106,6 +106,7 @@ def run_retrieval_pipeline(question: str, model: str,
     total_output_tokens = 0
     latency_per_hop = []
     docs_retrieved_per_hop = []
+    queries_per_hop = []
     all_retrieved_chunks = []
     sub_queries_generated = []
 
@@ -120,6 +121,7 @@ def run_retrieval_pipeline(question: str, model: str,
         # Single-hop path: one retrieval, skip straight to synthesis
         docs = retrieve(question, k=TOP_K)
         all_retrieved_chunks.extend(docs)
+        queries_per_hop.append(question)
         docs_retrieved_per_hop.append(
             [f"{d['metadata']['article_title']}_{d['metadata']['chunk_index']}" for d in docs]
         )
@@ -152,6 +154,7 @@ def run_retrieval_pipeline(question: str, model: str,
             all_retrieved_chunks = _deduplicate_chunks(all_retrieved_chunks)
             all_retrieved_chunks = _enforce_context_budget(all_retrieved_chunks)
 
+            queries_per_hop.append(next_query)
             docs_retrieved_per_hop.append(
                 [f"{d['metadata']['article_title']}_{d['metadata']['chunk_index']}" for d in docs]
             )
@@ -192,6 +195,7 @@ def run_retrieval_pipeline(question: str, model: str,
         "hop_necessity_classification": hop_necessity,
         "sub_queries_generated": sub_queries_generated,
         "docs_retrieved_per_hop": docs_retrieved_per_hop,
+        "queries_per_hop": queries_per_hop,
         "all_retrieved_chunks": all_retrieved_chunks,
         "stop_condition": stop_condition,
         "input_tokens": total_input_tokens,
