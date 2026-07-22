@@ -24,6 +24,7 @@ from src.core.logger import get_completed_ids
 from src.systems.baseline_a import run_and_log_baseline_a
 from src.systems.baseline_b import run_and_log_baseline_b
 from src.systems.main_system import run_and_log_main_system
+from src.systems.ablation_1 import run_and_log_ablation_1
 
 
 def get_question_path(split: str) -> str:
@@ -142,6 +143,14 @@ def run_evaluation(system_name: str, split: str):
                     split=split,
                     model=model
                 )
+            elif system_name == "ablation_1":
+                run_and_log_ablation_1(
+                    question=question,
+                    question_id=question_id,
+                    gold_answer=gold_answer,
+                    split=split,
+                    model=model
+                )
             else:
                 raise ValueError(f"Unknown system: {system_name}")
 
@@ -175,7 +184,7 @@ def run_evaluation(system_name: str, split: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run evaluation on a system and split")
     parser.add_argument("--system", required=True,
-                        choices=["baseline_a", "baseline_b", "main_system"],
+                        choices=["baseline_a", "baseline_b", "main_system", "ablation_1"],
                         help="Which system to run")
     parser.add_argument("--split", required=True, choices=["dev", "eval"],
                         help="Which question split to use")
