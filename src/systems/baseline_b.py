@@ -27,11 +27,9 @@ from src.core.config import TOP_K, DEV_MODEL
 # byte-identical across all systems or the comparisons are meaningless.
 from src.agents.answer_synthesizer import synthesize, _strip_think_tags
 
-# Context handling must be held constant with the Main System, so these are
-# imported rather than duplicated. Their proper home is src/core/ — deferred
-# rather than move code inside the frozen Main System. See dissertation
-# defect audit.
-from src.systems.main_system import (
+# Context handling must be held constant across all systems, so these are
+# imported from the shared retrieval module rather than duplicated.
+from src.systems._shared_retrieval import (
     _format_chunk,
     _deduplicate_chunks,
     _enforce_context_budget,
