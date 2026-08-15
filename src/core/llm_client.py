@@ -2,6 +2,16 @@
 # llm_client.py — Unified LLM caller for both Groq and OpenAI
 # Every LLM call in the project goes through call_llm().
 # Switching providers is a one-line change in config.py.
+#
+# CLIENTS ARE CREATED ON FIRST USE, NOT AT IMPORT.
+# Both SDKs raise immediately if their API key is absent, so constructing the
+# clients at module level made a missing key an IMPORT-time failure. Because
+# this module is imported by every agent, every system and the judge, that meant
+# a checkout holding only one provider's key could not run anything at all —
+# including tests that make no LLM call, such as the D5 prompt-invariant test.
+# Deferring construction moves the failure to the point of use, where it is
+# actionable, and keeps everything that does not call an LLM runnable with no
+# keys at all.
 # =============================================================================
 
 import os
@@ -13,9 +23,40 @@ from src.core.config import DEV_MODEL
 
 load_dotenv()
 
-# Initialise clients once at module level
-_groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-_openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Created on first use by the accessors below, then cached for the process.
+# Never construct these at import time (see module docstring).
+_groq_client = None
+_openai_client = None
+
+
+def _get_groq_client() -> Groq:
+    """Return the shared Groq client, constructing it on first use."""
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "GROQ_API_KEY is not set, but a Groq model was requested. "
+                "Either add GROQ_API_KEY to your .env file, or select an "
+                "OpenAI model via DEV_MODEL / EVAL_MODEL in src/core/config.py."
+            )
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
+
+
+def _get_openai_client() -> OpenAI:
+    """Return the shared OpenAI client, constructing it on first use."""
+    global _openai_client
+    if _openai_client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY is not set, but an OpenAI model was requested. "
+                "Add OPENAI_API_KEY to your .env file."
+            )
+        _openai_client = OpenAI(api_key=api_key)
+    return _openai_client
+
 
 def _is_groq_model(model: str) -> bool:
     """Detect whether a model name belongs to Groq or OpenAI."""
@@ -49,22 +90,21 @@ def call_llm(
     max_retries = 3
     wait_times = [1, 2, 4]  # exponential backoff in seconds
 
+    # Resolved BEFORE the retry loop. A missing API key is a configuration
+    # error, not a transient one — retrying it three times with backoff would
+    # waste seven seconds and bury the message under two misleading
+    # "Retrying..." lines. The retry loop is for network and rate-limit
+    # failures only.
+    client = _get_groq_client() if _is_groq_model(model) else _get_openai_client()
+
     for attempt in range(max_retries):
         try:
-            if _is_groq_model(model):
-                response = _groq_client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=max_tokens,
-                    temperature=temperature
-                )
-            else:
-                response = _openai_client.chat.completions.create(
-                    model=model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=max_tokens,
-                    temperature=temperature
-                )
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
 
             return {
                 "text": response.choices[0].message.content.strip(),
