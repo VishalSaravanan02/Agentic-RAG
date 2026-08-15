@@ -68,20 +68,50 @@ def f1_score(predicted: str, gold: str) -> float:
 
 # ── Retrieval quality metrics ───────────────────────────────────────────────
 
-def recall_at_k(result: dict, k: int = 5) -> int:
+def article_title(doc_id: str) -> str:
     """
-    Recall@k: 1 if at least one retrieved chunk contains a gold supporting fact.
-    Uses the gold_answer as a proxy for supporting fact content.
-    Binary per question: 1 if gold answer text appears in any retrieved chunk title/id.
-    Note: Full Supporting Facts Recall requires HotpotQA gold supporting facts,
-    computed separately in supporting_facts_recall().
-    """
-    gold = normalise(result.get("gold_answer", ""))
-    docs_per_hop = result.get("docs_retrieved_per_hop", [])
+    Extract the article title from a logged chunk ID.
 
-    for hop_docs in docs_per_hop:
+    Chunk IDs have the form "{article_title}_{chunk_index}". Article titles may
+    themselves contain underscores, so the split is on the LAST underscore only:
+    "Foo_2_3" -> "Foo_2".
+    """
+    return doc_id.rpartition("_")[0]
+
+
+def recall_at_k(result: dict, hotpotqa_item: dict) -> int:
+    """
+    Binary per question: 1 if at least one gold supporting-fact article appears
+    among the documents retrieved for this question, else 0.
+
+    Scored against HotpotQA's gold supporting facts. An earlier implementation
+    used the gold ANSWER string as a proxy for relevance and matched it as a
+    substring of the chunk ID; that produced false positives (gold "no" matching
+    "Christopher Nolan", "Harley Knoles", "Taxonomy of the Cactaceae") and was
+    replaced. HotpotQA provides no relevance annotation other than the gold
+    supporting facts, so there is no valid non-gold definition of "relevant".
+
+    Relationship to supporting_facts_recall(): this is the binary "did we find
+    ANY required evidence" form; supporting_facts_recall() is the proportional
+    "how much of the required evidence did we find" form.
+
+    Scope: computed over the union of documents retrieved across ALL hops
+    (top-k = 5 per hop, proposal 5.4). Systems performing more retrieval
+    therefore have more opportunity to score, exactly as for
+    supporting_facts_recall(); read alongside the efficiency metrics.
+
+    Returns 0 when the item carries no gold titles, matching
+    supporting_facts_recall().
+    """
+    supporting_facts = hotpotqa_item.get("supporting_facts", {})
+    gold_titles = {t.lower() for t in supporting_facts.get("title", [])}
+
+    if not gold_titles:
+        return 0
+
+    for hop_docs in result.get("docs_retrieved_per_hop", []):
         for doc_id in hop_docs:
-            if gold and gold in normalise(doc_id):
+            if article_title(doc_id).lower() in gold_titles:
                 return 1
     return 0
 
@@ -101,9 +131,7 @@ def supporting_facts_recall(result: dict, hotpotqa_item: dict) -> float:
     retrieved_titles = set()
     for hop_docs in docs_per_hop:
         for doc_id in hop_docs:
-            # doc_id format: "ArticleTitle_chunkIndex"
-            title = "_".join(doc_id.split("_")[:-1])
-            retrieved_titles.add(title.lower())
+            retrieved_titles.add(article_title(doc_id).lower())
 
     found = sum(
         1 for t in gold_titles
@@ -132,7 +160,7 @@ def retrieval_precision(result: dict, hotpotqa_item: dict) -> float:
 
     relevant = sum(
         1 for doc_id in all_retrieved
-        if "_".join(doc_id.split("_")[:-1]).lower() in gold_titles
+        if article_title(doc_id).lower() in gold_titles
     )
     return relevant / len(all_retrieved)
 
@@ -204,9 +232,11 @@ def compute_all(system_name: str, split: str,
 
         em_scores.append(exact_match(predicted, gold))
         f1_scores.append(f1_score(predicted, gold))
-        r_at_k.append(recall_at_k(r))
 
+        # All three retrieval metrics are scored against HotpotQA's gold
+        # supporting facts, so all three require the gold item to be present.
         if hpqa_item:
+            r_at_k.append(recall_at_k(r, hpqa_item))
             sf_recalls.append(supporting_facts_recall(r, hpqa_item))
             ret_precs.append(retrieval_precision(r, hpqa_item))
 
@@ -220,9 +250,12 @@ def compute_all(system_name: str, split: str,
             "f1":          round(sum(f1_scores) / n, 4),
         },
         "retrieval_quality": {
-            "recall_at_k":             round(sum(r_at_k) / n, 4),
+            "recall_at_k":             round(sum(r_at_k) / len(r_at_k), 4) if r_at_k else None,
             "supporting_facts_recall": round(sum(sf_recalls) / len(sf_recalls), 4) if sf_recalls else None,
             "retrieval_precision":     round(sum(ret_precs) / len(ret_precs), 4) if ret_precs else None,
+            # Retrieval metrics are scored only over questions present in the
+            # gold file, so this can be lower than n_questions. Report it.
+            "n_scored":                len(sf_recalls),
         },
         "efficiency": compute_efficiency(results, split),
     }
@@ -258,13 +291,16 @@ def print_comparison(baseline_metrics: dict, main_metrics: dict):
     print(f"\n--- Retrieval Quality ---")
     brq = baseline_metrics.get("retrieval_quality", {})
     mrq = main_metrics.get("retrieval_quality", {})
-    print(f"{'Recall@k':<35} {brq.get('recall_at_k', 0):>12.4f} {mrq.get('recall_at_k', 0):>14.4f}")
-    sf_b = brq.get('supporting_facts_recall')
-    sf_m = mrq.get('supporting_facts_recall')
-    print(f"{'Supporting Facts Recall':<35} {str(round(sf_b,4)) if sf_b else 'N/A':>12} {str(round(sf_m,4)) if sf_m else 'N/A':>14}")
-    rp_b = brq.get('retrieval_precision')
-    rp_m = mrq.get('retrieval_precision')
-    print(f"{'Retrieval Precision':<35} {str(round(rp_b,4)) if rp_b else 'N/A':>12} {str(round(rp_m,4)) if rp_m else 'N/A':>14}")
+
+    def _fmt(value, width):
+        # Explicit None check: a genuine 0.0 is a real measurement, not a
+        # missing one, and must not be printed as "N/A".
+        return f"{'N/A' if value is None else round(value, 4)!s:>{width}}"
+
+    for label, key in (("Recall@k", "recall_at_k"),
+                       ("Supporting Facts Recall", "supporting_facts_recall"),
+                       ("Retrieval Precision", "retrieval_precision")):
+        print(f"{label:<35} {_fmt(brq.get(key), 12)} {_fmt(mrq.get(key), 14)}")
 
     print(f"\n--- Efficiency ---")
     bef = baseline_metrics.get("efficiency", {})

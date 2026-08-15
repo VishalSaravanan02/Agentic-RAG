@@ -26,7 +26,9 @@ from src.evaluation.bootstrap import (
     compare,
     per_question_values,
     format_result,
+    NEEDS_GOLD,
 )
+from src.evaluation.metrics import recall_at_k
 
 FAST = 2000  # fewer resamples than production; keeps the suite quick
 
@@ -171,14 +173,55 @@ def test_empty_input_rejected():
         paired_bootstrap([], [], n_resamples=FAST)
 
 
-def test_gold_dependent_metric_rejected_without_gold_data():
+@pytest.mark.parametrize("metric", sorted(NEEDS_GOLD))
+def test_gold_dependent_metric_rejected_without_gold_data(metric):
     """
-    supporting_facts_recall and retrieval_precision score against HotpotQA's
-    gold supporting facts. Without them the metric would silently be unavailable
-    rather than wrong, so this fails loudly instead.
+    All three retrieval metrics score against HotpotQA's gold supporting facts.
+    Without them the metric would silently be unavailable rather than wrong, so
+    this fails loudly instead.
+
+    REGRESSION GUARD for recall_at_k specifically. recall_at_k was originally
+    scored against the gold ANSWER string matched as a substring of the chunk
+    ID, which needed no gold data and produced false positives (gold "no"
+    matching "Christopher Nolan"). Driving this test off NEEDS_GOLD means that
+    if recall_at_k is ever removed from that set, this test disappears silently
+    -- so test_recall_at_k_is_gold_dependent below pins the membership itself.
     """
     with pytest.raises(ValueError):
-        per_question_values("main_system", "dev", "supporting_facts_recall")
+        per_question_values("main_system", "dev", metric)
+
+
+def test_recall_at_k_is_gold_dependent():
+    """
+    Pins recall_at_k's membership of NEEDS_GOLD, and that no earlier branch in
+    per_question_values() shadows it. Both are required: adding the metric to
+    NEEDS_GOLD while leaving a standalone `elif metric == "recall_at_k"` branch
+    above the gold branch would leave the old, invalid scoring in place.
+    """
+    assert "recall_at_k" in NEEDS_GOLD
+
+    gold = {"q1": {"supporting_facts": {"title": ["Gold Article"]}}}
+    result = {"question_id": "q1",
+              "docs_retrieved_per_hop": [["Gold Article_0", "Other_3"]]}
+    assert recall_at_k(result, gold["q1"]) == 1
+
+    miss = {"question_id": "q1",
+            "docs_retrieved_per_hop": [["Other_3", "Another_1"]]}
+    assert recall_at_k(miss, gold["q1"]) == 0
+
+
+def test_recall_at_k_no_longer_matches_answer_substrings():
+    """
+    The exact defect that motivated the rescoring: gold answer "no" scored 1
+    against article titles merely CONTAINING the letters n-o. Under gold-based
+    scoring these must all be 0, since none of the titles is a gold article.
+    """
+    item = {"supporting_facts": {"title": ["Some Gold Article"]}}
+    for title in ("Taxonomy of the Cactaceae_1",
+                  "Christopher Nolan (author)_1",
+                  "Harley Knoles_0"):
+        result = {"gold_answer": "no", "docs_retrieved_per_hop": [[title]]}
+        assert recall_at_k(result, item) == 0, f"false positive on {title!r}"
 
 
 def test_unknown_metric_rejected():
