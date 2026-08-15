@@ -167,7 +167,7 @@ def retrieval_precision(result: dict, hotpotqa_item: dict) -> float:
 
 # ── Efficiency metrics ──────────────────────────────────────────────────────
 
-def compute_efficiency(results: list[dict], split: str) -> dict:
+def compute_efficiency(results: list[dict]) -> dict:
     """Compute latency, token usage, and cost estimate across all results."""
     latencies    = [r.get("total_latency_ms", 0) for r in results]
     input_tokens = [r.get("input_tokens", 0) for r in results]
@@ -177,17 +177,18 @@ def compute_efficiency(results: list[dict], split: str) -> dict:
     total_output = sum(output_tokens)
     n = len(results)
 
-    if split == "dev":
-        cost = {"note": "Groq dev model — free tier"}
-    else:
-        input_cost  = (total_input  / 1_000_000) * INPUT_PRICE_PER_1M
-        output_cost = (total_output / 1_000_000) * OUTPUT_PRICE_PER_1M
-        total_usd   = input_cost + output_cost
-        cost = {
-            "total_cost_usd":       round(total_usd, 4),
-            "total_cost_gbp":       round(total_usd * USD_TO_GBP, 4),
-            "cost_per_question_usd":round(total_usd / n, 6) if n else 0,
-        }
+    # Both splits now run gpt-4o-mini, so both are priced identically. The dev
+    # split was originally a free Groq tier and was special-cased as costless;
+    # that special case is gone, because reporting a paid run as free is worse
+    # than reporting no cost at all.
+    input_cost  = (total_input  / 1_000_000) * INPUT_PRICE_PER_1M
+    output_cost = (total_output / 1_000_000) * OUTPUT_PRICE_PER_1M
+    total_usd   = input_cost + output_cost
+    cost = {
+        "total_cost_usd":       round(total_usd, 4),
+        "total_cost_gbp":       round(total_usd * USD_TO_GBP, 4),
+        "cost_per_question_usd":round(total_usd / n, 6) if n else 0,
+    }
 
     return {
         "avg_latency_ms":          round(sum(latencies) / n, 2) if n else 0,
@@ -257,7 +258,7 @@ def compute_all(system_name: str, split: str,
             # gold file, so this can be lower than n_questions. Report it.
             "n_scored":                len(sf_recalls),
         },
-        "efficiency": compute_efficiency(results, split),
+        "efficiency": compute_efficiency(results),
     }
 
     # Hop distribution (main system only)
