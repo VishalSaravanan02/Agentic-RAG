@@ -142,7 +142,24 @@ def supporting_facts_recall(result: dict, hotpotqa_item: dict) -> float:
 
 def retrieval_precision(result: dict, hotpotqa_item: dict) -> float:
     """
-    Proportion of retrieved chunks that are gold supporting facts.
+    Proportion of the chunks the model actually READ that are gold supporting
+    facts.
+
+    Counted over DEDUPLICATED chunks, because that is what the model saw: the
+    retrieval loop removes duplicates before assembling the context (see
+    _shared_retrieval._accumulate_context), so a chunk retrieved on three hops
+    is read once.
+
+    Counting the raw retrieved list instead — as this originally did — inflates
+    both numerator and denominator by a different factor for each system
+    (Baseline A 0%, Baseline B 17.6%, Main System 34.8%, Ablation 1 58.5% on
+    eval), because systems differ in how often they re-retrieve the same chunk.
+    That makes cross-system precision comparisons unsound, which is the point of
+    the metric. The redundancy itself is a real finding and is not discarded —
+    it is reported separately by duplicate_retrieval_rate().
+
+    Note this measures the CONTEXT the model reasoned over, not the efficiency
+    of the retrieval process. duplicate_retrieval_rate() covers the latter.
     """
     supporting_facts = hotpotqa_item.get("supporting_facts", {})
     gold_titles = {t.lower() for t in supporting_facts.get("title", [])}
@@ -150,19 +167,50 @@ def retrieval_precision(result: dict, hotpotqa_item: dict) -> float:
     if not gold_titles:
         return 0.0
 
-    docs_per_hop = result.get("docs_retrieved_per_hop", [])
-    all_retrieved = []
-    for hop_docs in docs_per_hop:
-        all_retrieved.extend(hop_docs)
+    # Deduplicate on chunk ID, mirroring the retrieval loop. Chunk-level, not
+    # article-level: two different chunks of one gold article are two distinct
+    # pieces of context, and the model reads both.
+    seen = set()
+    for hop_docs in result.get("docs_retrieved_per_hop", []):
+        seen.update(hop_docs)
 
-    if not all_retrieved:
+    if not seen:
         return 0.0
 
     relevant = sum(
-        1 for doc_id in all_retrieved
+        1 for doc_id in seen
         if article_title(doc_id).lower() in gold_titles
     )
-    return relevant / len(all_retrieved)
+    return relevant / len(seen)
+
+
+def duplicate_retrieval_rate(result: dict) -> float:
+    """
+    Proportion of retrieval slots spent re-fetching a chunk already retrieved
+    on an earlier hop.
+
+    0.0 means every retrieval returned something new; 0.5 means half the
+    retrieval effort was redundant. Single-hop systems are always 0.0 by
+    construction, since they retrieve once.
+
+    This is a direct measure of wasted retrieval effort, and it is diagnostic
+    rather than incidental: a system that re-issues near-identical queries will
+    keep retrieving the same chunks. On eval, Ablation 1 scores highest here,
+    which is the stalling behaviour visible in queries_per_hop showing up
+    independently in the retrieval data.
+
+    Requires no gold data.
+    """
+    total = 0
+    seen = set()
+    for hop_docs in result.get("docs_retrieved_per_hop", []):
+        for doc_id in hop_docs:
+            total += 1
+            seen.add(doc_id)
+
+    if total == 0:
+        return 0.0
+    return (total - len(seen)) / total
 
 
 # ── Efficiency metrics ──────────────────────────────────────────────────────
@@ -224,6 +272,7 @@ def compute_all(system_name: str, split: str,
     r_at_k     = []
     sf_recalls = []
     ret_precs  = []
+    dup_rates  = []
 
     for r in results:
         predicted = r.get("final_answer", "")
@@ -241,6 +290,9 @@ def compute_all(system_name: str, split: str,
             sf_recalls.append(supporting_facts_recall(r, hpqa_item))
             ret_precs.append(retrieval_precision(r, hpqa_item))
 
+        # Needs no gold data, so it is scored for every question.
+        dup_rates.append(duplicate_retrieval_rate(r))
+
     # Aggregate
     metrics = {
         "system":          system_name,
@@ -254,6 +306,9 @@ def compute_all(system_name: str, split: str,
             "recall_at_k":             round(sum(r_at_k) / len(r_at_k), 4) if r_at_k else None,
             "supporting_facts_recall": round(sum(sf_recalls) / len(sf_recalls), 4) if sf_recalls else None,
             "retrieval_precision":     round(sum(ret_precs) / len(ret_precs), 4) if ret_precs else None,
+            # Needs no gold data, so it is scored over all n questions rather
+            # than only those present in the gold file.
+            "duplicate_retrieval_rate": round(sum(dup_rates) / len(dup_rates), 4) if dup_rates else None,
             # Retrieval metrics are scored only over questions present in the
             # gold file, so this can be lower than n_questions. Report it.
             "n_scored":                len(sf_recalls),
@@ -300,7 +355,8 @@ def print_comparison(baseline_metrics: dict, main_metrics: dict):
 
     for label, key in (("Recall@k", "recall_at_k"),
                        ("Supporting Facts Recall", "supporting_facts_recall"),
-                       ("Retrieval Precision", "retrieval_precision")):
+                       ("Retrieval Precision", "retrieval_precision"),
+                       ("Duplicate Retrieval Rate", "duplicate_retrieval_rate")):
         print(f"{label:<35} {_fmt(brq.get(key), 12)} {_fmt(mrq.get(key), 14)}")
 
     print(f"\n--- Efficiency ---")

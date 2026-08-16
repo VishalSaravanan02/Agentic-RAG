@@ -28,7 +28,11 @@ from src.evaluation.bootstrap import (
     format_result,
     NEEDS_GOLD,
 )
-from src.evaluation.metrics import recall_at_k
+from src.evaluation.metrics import (
+    recall_at_k,
+    retrieval_precision,
+    duplicate_retrieval_rate,
+)
 
 FAST = 2000  # fewer resamples than production; keeps the suite quick
 
@@ -303,3 +307,52 @@ def test_format_result_reports_floor_rather_than_a_zero_p_value():
                           "mean_a": 1.0, "mean_b": 0.0})
     assert "p <" in line
     assert "p = 0.0000" not in line
+
+# --- Duplicate retrieval rate ------------------------------------------------
+
+def test_duplicate_rate_needs_no_gold_data():
+    """
+    Computed from logged retrievals alone, so unlike the other retrieval
+    metrics it must NOT be in NEEDS_GOLD and must run without gold_lookup.
+    """
+    assert "duplicate_retrieval_rate" not in NEEDS_GOLD
+    v = per_question_values("main_system", "dev", "duplicate_retrieval_rate")
+    assert len(v) > 0
+    assert all(0.0 <= x <= 1.0 for x in v.values())
+
+
+def test_duplicate_rate_counts_repeated_slots_not_repeated_docs():
+    """
+    The denominator is retrieval slots used, not distinct documents. A chunk
+    fetched on three hops wastes two slots, not one.
+    """
+    # 6 slots, 2 distinct chunks -> 4 wasted
+    r = {"docs_retrieved_per_hop": [["A_0", "B_0"], ["A_0", "B_0"], ["A_0", "B_0"]]}
+    assert duplicate_retrieval_rate(r) == pytest.approx(4 / 6)
+
+    # No repeats at all
+    clean = {"docs_retrieved_per_hop": [["A_0", "B_0"], ["C_0", "D_0"]]}
+    assert duplicate_retrieval_rate(clean) == 0.0
+
+    # Single hop cannot repeat
+    single = {"docs_retrieved_per_hop": [["A_0", "B_0", "C_0"]]}
+    assert duplicate_retrieval_rate(single) == 0.0
+
+    # No retrievals at all
+    assert duplicate_retrieval_rate({"docs_retrieved_per_hop": []}) == 0.0
+
+
+def test_retrieval_precision_counts_only_what_the_model_read():
+    """
+    Precision is scored over deduplicated chunks, matching the context the
+    retrieval loop actually assembles. The worked case: 10 retrieved, 8
+    distinct, 2 of them gold -> 0.25, not 3/10 = 0.30.
+    """
+    result = {"docs_retrieved_per_hop": [
+        ["George Eliot_0", "Middlemarch_0", "Victorian novels_0",
+         "Warwickshire_0", "Mary Ann Evans_0"],
+        ["George Eliot_0", "Bedford College_0", "London_0",
+         "Middlemarch_0", "Womens education_0"],
+    ]}
+    item = {"supporting_facts": {"title": ["George Eliot", "Bedford College"]}}
+    assert retrieval_precision(result, item) == pytest.approx(0.25)

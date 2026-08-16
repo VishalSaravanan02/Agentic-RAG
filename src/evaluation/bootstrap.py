@@ -25,6 +25,7 @@ from src.evaluation.metrics import (
     recall_at_k,
     supporting_facts_recall,
     retrieval_precision,
+    duplicate_retrieval_rate,
 )
 
 N_RESAMPLES = 10_000
@@ -42,6 +43,7 @@ METRICS = [
     "recall_at_k",
     "supporting_facts_recall",
     "retrieval_precision",
+    "duplicate_retrieval_rate",
     "latency_ms",
     "input_tokens",
     "output_tokens",
@@ -71,6 +73,9 @@ def per_question_values(system_name: str, split: str, metric: str,
             v = exact_match(r["final_answer"], r["gold_answer"])
         elif metric == "f1":
             v = f1_score(r["final_answer"], r["gold_answer"])
+        elif metric == "duplicate_retrieval_rate":
+            # Needs no gold data — computed from the logged retrievals alone.
+            v = duplicate_retrieval_rate(r)
         elif metric == "latency_ms":
             v = r["total_latency_ms"]
         elif metric == "input_tokens":
