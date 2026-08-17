@@ -25,13 +25,17 @@ from src.evaluation.metrics import (
     recall_at_k,
     supporting_facts_recall,
     retrieval_precision,
+    duplicate_retrieval_rate,
 )
 
 N_RESAMPLES = 10_000
 CONFIDENCE_LEVEL = 0.95
 
-# Metrics requiring HotpotQA gold supporting facts
-NEEDS_GOLD = {"supporting_facts_recall", "retrieval_precision"}
+# Metrics requiring HotpotQA gold supporting facts.
+# recall_at_k belongs here since it was rescored against gold supporting facts
+# (see metrics.recall_at_k). It must ALSO have no earlier branch of its own in
+# per_question_values(), or that branch wins and this membership does nothing.
+NEEDS_GOLD = {"recall_at_k", "supporting_facts_recall", "retrieval_precision"}
 
 METRICS = [
     "exact_match",
@@ -39,6 +43,7 @@ METRICS = [
     "recall_at_k",
     "supporting_facts_recall",
     "retrieval_precision",
+    "duplicate_retrieval_rate",
     "latency_ms",
     "input_tokens",
     "output_tokens",
@@ -68,8 +73,9 @@ def per_question_values(system_name: str, split: str, metric: str,
             v = exact_match(r["final_answer"], r["gold_answer"])
         elif metric == "f1":
             v = f1_score(r["final_answer"], r["gold_answer"])
-        elif metric == "recall_at_k":
-            v = recall_at_k(r)
+        elif metric == "duplicate_retrieval_rate":
+            # Needs no gold data — computed from the logged retrievals alone.
+            v = duplicate_retrieval_rate(r)
         elif metric == "latency_ms":
             v = r["total_latency_ms"]
         elif metric == "input_tokens":
@@ -80,8 +86,12 @@ def per_question_values(system_name: str, split: str, metric: str,
             if qid not in gold_lookup:
                 continue          # question absent from gold file; skip
             item = gold_lookup[qid]
-            v = (supporting_facts_recall(r, item) if metric == "supporting_facts_recall"
-                 else retrieval_precision(r, item))
+            if metric == "recall_at_k":
+                v = recall_at_k(r, item)
+            elif metric == "supporting_facts_recall":
+                v = supporting_facts_recall(r, item)
+            else:
+                v = retrieval_precision(r, item)
         else:
             raise ValueError(f"unknown metric: {metric}")
 

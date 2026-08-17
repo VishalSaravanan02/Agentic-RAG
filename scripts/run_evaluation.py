@@ -21,6 +21,9 @@ from src.core.config import (
     DEV_DATA_PATH, EVAL_DATA_PATH, DEV_MODEL, EVAL_MODEL, RESULTS_DIR
 )
 from src.core.logger import get_completed_ids
+from src.evaluation.metrics import (
+    INPUT_PRICE_PER_1M, OUTPUT_PRICE_PER_1M, USD_TO_GBP
+)
 from src.systems.baseline_a import run_and_log_baseline_a
 from src.systems.baseline_b import run_and_log_baseline_b
 from src.systems.main_system import run_and_log_main_system
@@ -47,20 +50,20 @@ def get_model(split: str) -> str:
 def estimate_cost(system_name: str, split: str, results: list[dict]) -> dict:
     """
     Estimate API cost from logged token usage.
-    Uses GPT-4o-mini pricing for eval splits, Groq (free) for dev splits.
+
+    Both splits run gpt-4o-mini and are priced identically. The dev split was
+    originally a free Groq tier and was special-cased as costless; that special
+    case is gone, because reporting a paid run as free is worse than reporting
+    no cost at all.
+
+    Prices are imported from metrics.py rather than restated here, so the two
+    cost paths cannot drift apart.
     """
-    if split == "dev":
-        return {"note": "Groq dev model — free tier, no cost"}
-
-    # GPT-4o-mini pricing (as of July 2026)
-    input_price_per_1m  = 0.15   # USD per 1M input tokens
-    output_price_per_1m = 0.60   # USD per 1M output tokens
-
     total_input  = sum(r.get("input_tokens", 0) for r in results)
     total_output = sum(r.get("output_tokens", 0) for r in results)
 
-    input_cost  = (total_input  / 1_000_000) * input_price_per_1m
-    output_cost = (total_output / 1_000_000) * output_price_per_1m
+    input_cost  = (total_input  / 1_000_000) * INPUT_PRICE_PER_1M
+    output_cost = (total_output / 1_000_000) * OUTPUT_PRICE_PER_1M
     total_cost  = input_cost + output_cost
 
     return {
@@ -69,7 +72,7 @@ def estimate_cost(system_name: str, split: str, results: list[dict]) -> dict:
         "input_cost_usd":      round(input_cost, 4),
         "output_cost_usd":     round(output_cost, 4),
         "total_cost_usd":      round(total_cost, 4),
-        "total_cost_gbp":      round(total_cost * 0.79, 4),
+        "total_cost_gbp":      round(total_cost * USD_TO_GBP, 4),
     }
 
 

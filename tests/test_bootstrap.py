@@ -26,6 +26,12 @@ from src.evaluation.bootstrap import (
     compare,
     per_question_values,
     format_result,
+    NEEDS_GOLD,
+)
+from src.evaluation.metrics import (
+    recall_at_k,
+    retrieval_precision,
+    duplicate_retrieval_rate,
 )
 
 FAST = 2000  # fewer resamples than production; keeps the suite quick
@@ -171,14 +177,55 @@ def test_empty_input_rejected():
         paired_bootstrap([], [], n_resamples=FAST)
 
 
-def test_gold_dependent_metric_rejected_without_gold_data():
+@pytest.mark.parametrize("metric", sorted(NEEDS_GOLD))
+def test_gold_dependent_metric_rejected_without_gold_data(metric):
     """
-    supporting_facts_recall and retrieval_precision score against HotpotQA's
-    gold supporting facts. Without them the metric would silently be unavailable
-    rather than wrong, so this fails loudly instead.
+    All three retrieval metrics score against HotpotQA's gold supporting facts.
+    Without them the metric would silently be unavailable rather than wrong, so
+    this fails loudly instead.
+
+    REGRESSION GUARD for recall_at_k specifically. recall_at_k was originally
+    scored against the gold ANSWER string matched as a substring of the chunk
+    ID, which needed no gold data and produced false positives (gold "no"
+    matching "Christopher Nolan"). Driving this test off NEEDS_GOLD means that
+    if recall_at_k is ever removed from that set, this test disappears silently
+    -- so test_recall_at_k_is_gold_dependent below pins the membership itself.
     """
     with pytest.raises(ValueError):
-        per_question_values("main_system", "dev", "supporting_facts_recall")
+        per_question_values("main_system", "dev", metric)
+
+
+def test_recall_at_k_is_gold_dependent():
+    """
+    Pins recall_at_k's membership of NEEDS_GOLD, and that no earlier branch in
+    per_question_values() shadows it. Both are required: adding the metric to
+    NEEDS_GOLD while leaving a standalone `elif metric == "recall_at_k"` branch
+    above the gold branch would leave the old, invalid scoring in place.
+    """
+    assert "recall_at_k" in NEEDS_GOLD
+
+    gold = {"q1": {"supporting_facts": {"title": ["Gold Article"]}}}
+    result = {"question_id": "q1",
+              "docs_retrieved_per_hop": [["Gold Article_0", "Other_3"]]}
+    assert recall_at_k(result, gold["q1"]) == 1
+
+    miss = {"question_id": "q1",
+            "docs_retrieved_per_hop": [["Other_3", "Another_1"]]}
+    assert recall_at_k(miss, gold["q1"]) == 0
+
+
+def test_recall_at_k_no_longer_matches_answer_substrings():
+    """
+    The exact defect that motivated the rescoring: gold answer "no" scored 1
+    against article titles merely CONTAINING the letters n-o. Under gold-based
+    scoring these must all be 0, since none of the titles is a gold article.
+    """
+    item = {"supporting_facts": {"title": ["Some Gold Article"]}}
+    for title in ("Taxonomy of the Cactaceae_1",
+                  "Christopher Nolan (author)_1",
+                  "Harley Knoles_0"):
+        result = {"gold_answer": "no", "docs_retrieved_per_hop": [[title]]}
+        assert recall_at_k(result, item) == 0, f"false positive on {title!r}"
 
 
 def test_unknown_metric_rejected():
@@ -260,3 +307,52 @@ def test_format_result_reports_floor_rather_than_a_zero_p_value():
                           "mean_a": 1.0, "mean_b": 0.0})
     assert "p <" in line
     assert "p = 0.0000" not in line
+
+# --- Duplicate retrieval rate ------------------------------------------------
+
+def test_duplicate_rate_needs_no_gold_data():
+    """
+    Computed from logged retrievals alone, so unlike the other retrieval
+    metrics it must NOT be in NEEDS_GOLD and must run without gold_lookup.
+    """
+    assert "duplicate_retrieval_rate" not in NEEDS_GOLD
+    v = per_question_values("main_system", "dev", "duplicate_retrieval_rate")
+    assert len(v) > 0
+    assert all(0.0 <= x <= 1.0 for x in v.values())
+
+
+def test_duplicate_rate_counts_repeated_slots_not_repeated_docs():
+    """
+    The denominator is retrieval slots used, not distinct documents. A chunk
+    fetched on three hops wastes two slots, not one.
+    """
+    # 6 slots, 2 distinct chunks -> 4 wasted
+    r = {"docs_retrieved_per_hop": [["A_0", "B_0"], ["A_0", "B_0"], ["A_0", "B_0"]]}
+    assert duplicate_retrieval_rate(r) == pytest.approx(4 / 6)
+
+    # No repeats at all
+    clean = {"docs_retrieved_per_hop": [["A_0", "B_0"], ["C_0", "D_0"]]}
+    assert duplicate_retrieval_rate(clean) == 0.0
+
+    # Single hop cannot repeat
+    single = {"docs_retrieved_per_hop": [["A_0", "B_0", "C_0"]]}
+    assert duplicate_retrieval_rate(single) == 0.0
+
+    # No retrievals at all
+    assert duplicate_retrieval_rate({"docs_retrieved_per_hop": []}) == 0.0
+
+
+def test_retrieval_precision_counts_only_what_the_model_read():
+    """
+    Precision is scored over deduplicated chunks, matching the context the
+    retrieval loop actually assembles. The worked case: 10 retrieved, 8
+    distinct, 2 of them gold -> 0.25, not 3/10 = 0.30.
+    """
+    result = {"docs_retrieved_per_hop": [
+        ["George Eliot_0", "Middlemarch_0", "Victorian novels_0",
+         "Warwickshire_0", "Mary Ann Evans_0"],
+        ["George Eliot_0", "Bedford College_0", "London_0",
+         "Middlemarch_0", "Womens education_0"],
+    ]}
+    item = {"supporting_facts": {"title": ["George Eliot", "Bedford College"]}}
+    assert retrieval_precision(result, item) == pytest.approx(0.25)
