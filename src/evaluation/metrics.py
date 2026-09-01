@@ -9,6 +9,7 @@ import os
 import re
 import string
 from collections import Counter
+from datetime import datetime
 from src.core.logger import load_results
 from src.core.config import RESULTS_DIR
 
@@ -330,6 +331,36 @@ def compute_all(system_name: str, split: str,
         }
 
     return metrics
+
+
+def save_metrics(all_metrics: dict, split: str, path: str = None) -> str:
+    """
+    Write computed metrics to JSON so reported figures have a file behind them
+    rather than console output that is lost when the terminal closes.
+
+    all_metrics maps system_name -> the dict returned by compute_all().
+    Defaults to RESULTS_DIR/metrics_{split}.json, matching the naming used for
+    the per-system .jsonl logs.
+
+    Deliberately separate from compute_all(): computing metrics is a pure
+    function of the saved results and stays side-effect free, so it can be
+    called from tests or a notebook without writing anything to disk.
+    """
+    if path is None:
+        path = os.path.join(RESULTS_DIR, f"metrics_{split}.json")
+
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+
+    payload = {
+        "split": split,
+        "generated_at": datetime.utcnow().isoformat(),
+        "systems": all_metrics,
+    }
+
+    with open(path, "w") as f:
+        json.dump(payload, f, indent=2)
+
+    return path
 
 
 def print_comparison(baseline_metrics: dict, main_metrics: dict):
