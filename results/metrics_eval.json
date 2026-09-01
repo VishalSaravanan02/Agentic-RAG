@@ -1,0 +1,136 @@
+{
+  "split": "eval",
+  "generated_at": "2026-09-01T14:41:12.527882",
+  "systems": {
+    "baseline_a": {
+      "system": "baseline_a",
+      "split": "eval",
+      "n_questions": 1000,
+      "answer_quality": {
+        "exact_match": 0.369,
+        "f1": 0.4693
+      },
+      "retrieval_quality": {
+        "recall_at_k": 0.855,
+        "supporting_facts_recall": 0.5775,
+        "retrieval_precision": 0.2386,
+        "duplicate_retrieval_rate": 0.0,
+        "n_scored": 1000
+      },
+      "efficiency": {
+        "avg_latency_ms": 856.33,
+        "avg_input_tokens": 531.3,
+        "avg_output_tokens": 4.5,
+        "total_input_tokens": 531286,
+        "total_output_tokens": 4517,
+        "cost": {
+          "total_cost_usd": 0.0824,
+          "total_cost_gbp": 0.0651,
+          "cost_per_question_usd": 8.2e-05
+        }
+      }
+    },
+    "baseline_b": {
+      "system": "baseline_b",
+      "split": "eval",
+      "n_questions": 1000,
+      "answer_quality": {
+        "exact_match": 0.452,
+        "f1": 0.582
+      },
+      "retrieval_quality": {
+        "recall_at_k": 0.902,
+        "supporting_facts_recall": 0.7392,
+        "retrieval_precision": 0.1865,
+        "duplicate_retrieval_rate": 0.1495,
+        "n_scored": 1000
+      },
+      "efficiency": {
+        "avg_latency_ms": 1661.5,
+        "avg_input_tokens": 1367.0,
+        "avg_output_tokens": 12.0,
+        "total_input_tokens": 1367034,
+        "total_output_tokens": 12023,
+        "cost": {
+          "total_cost_usd": 0.2123,
+          "total_cost_gbp": 0.1677,
+          "cost_per_question_usd": 0.000212
+        }
+      }
+    },
+    "ablation_1": {
+      "system": "ablation_1",
+      "split": "eval",
+      "n_questions": 1000,
+      "answer_quality": {
+        "exact_match": 0.443,
+        "f1": 0.5662
+      },
+      "retrieval_quality": {
+        "recall_at_k": 0.887,
+        "supporting_facts_recall": 0.6999,
+        "retrieval_precision": 0.2174,
+        "duplicate_retrieval_rate": 0.2253,
+        "n_scored": 1000
+      },
+      "efficiency": {
+        "avg_latency_ms": 5885.23,
+        "avg_input_tokens": 2630.5,
+        "avg_output_tokens": 219.6,
+        "total_input_tokens": 2630507,
+        "total_output_tokens": 219620,
+        "cost": {
+          "total_cost_usd": 0.5263,
+          "total_cost_gbp": 0.4158,
+          "cost_per_question_usd": 0.000526
+        }
+      }
+    },
+    "main_system": {
+      "system": "main_system",
+      "split": "eval",
+      "n_questions": 1000,
+      "answer_quality": {
+        "exact_match": 0.423,
+        "f1": 0.5429
+      },
+      "retrieval_quality": {
+        "recall_at_k": 0.906,
+        "supporting_facts_recall": 0.6818,
+        "retrieval_precision": 0.1763,
+        "duplicate_retrieval_rate": 0.1765,
+        "n_scored": 1000
+      },
+      "efficiency": {
+        "avg_latency_ms": 7871.64,
+        "avg_input_tokens": 3349.5,
+        "avg_output_tokens": 271.6,
+        "total_input_tokens": 3349482,
+        "total_output_tokens": 271620,
+        "cost": {
+          "total_cost_usd": 0.6654,
+          "total_cost_gbp": 0.5257,
+          "cost_per_question_usd": 0.000665
+        }
+      },
+      "hop_analysis": {
+        "hop_distribution": {
+          "1": 376,
+          "2": 94,
+          "3": 65,
+          "4": 465
+        },
+        "stop_condition_distribution": {
+          "single_hop": 256,
+          "max_hops": 415,
+          "sufficiency": 329
+        },
+        "hop_classification_distribution": {
+          "NO": 256,
+          "YES": 744
+        },
+        "avg_hops": 2.62
+      }
+    }
+  }
+}
