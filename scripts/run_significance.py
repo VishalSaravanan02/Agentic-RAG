@@ -241,9 +241,18 @@ def main():
             print(f"\nRQ2: no questions classified {label} — skipping")
             continue
 
+        # Retrieval metrics are included here, not just answer quality: the
+        # RQ2 table reports evidence coverage per subset, and the NO subset is
+        # a useful check, since both systems retrieve identically there and
+        # their retrieval metrics must therefore be equal.
+        rq2_metrics = ANSWER_METRICS + (
+            ["supporting_facts_recall", "retrieval_precision"]
+            if gold_lookup is not None else []
+        )
+
         run_block(
             f"RQ2  —  questions D1 classified as {label}  (n = {len(qids)})",
-            rq2_pair, ANSWER_METRICS, split, gold_lookup, collected,
+            rq2_pair, rq2_metrics, split, gold_lookup, collected,
             question_ids=qids, subset_label=f"D1={label}",
         )
 
