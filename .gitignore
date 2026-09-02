@@ -29,3 +29,4 @@ __pycache__/
 *.env
 
 data/
+failures_to_review.txt

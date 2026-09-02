@@ -14,10 +14,13 @@
 # given a fixed seed.
 # =============================================================================
 
+import json
+import os
+
 import numpy as np
 from scipy import stats
 
-from src.core.config import RANDOM_SEED
+from src.core.config import RANDOM_SEED, RESULTS_DIR
 from src.core.logger import load_results
 from src.evaluation.metrics import (
     exact_match,
@@ -37,6 +40,12 @@ CONFIDENCE_LEVEL = 0.95
 # per_question_values(), or that branch wins and this membership does nothing.
 NEEDS_GOLD = {"recall_at_k", "supporting_facts_recall", "retrieval_precision"}
 
+# Judge dimensions live in results/judge_{system}_{split}.jsonl rather than in
+# the system's own log, because scoring was a separate pass over a 200-question
+# subsample. They need no gold data: the judge scores the answer against the
+# retrieved context, not against the gold answer.
+JUDGE_METRICS = {"faithfulness", "relevance", "coherence"}
+
 METRICS = [
     "exact_match",
     "f1",
@@ -50,6 +59,36 @@ METRICS = [
 ]
 
 
+def load_judge_results(system_name: str, split: str) -> list[dict]:
+    """
+    Read results/judge_{system}_{split}.jsonl.
+
+    Kept separate from logger.load_results() because the judge files follow a
+    different naming convention and a different schema: one record per scored
+    question, carrying the three 1-5 dimensions rather than the 14-field run
+    log. Malformed lines are skipped rather than raising, matching the
+    behaviour of load_results().
+    """
+    path = os.path.join(RESULTS_DIR, f"judge_{system_name}_{split}.jsonl")
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Judge results not found at {path}. Run the judge scoring pass "
+            f"before requesting judge metrics."
+        )
+
+    out = []
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    return out
+
+
 def per_question_values(system_name: str, split: str, metric: str,
                         gold_lookup: dict | None = None) -> dict:
     """
@@ -58,12 +97,28 @@ def per_question_values(system_name: str, split: str, metric: str,
     gold_lookup maps question_id -> HotpotQA item, and is required for
     supporting_facts_recall and retrieval_precision. Passing it for other
     metrics is harmless.
+
+    Judge metrics are read from the separate judge results file and cover only
+    the 200-question subsample, so a judge comparison is paired over 200
+    questions rather than 1,000.
     """
     if metric in NEEDS_GOLD and gold_lookup is None:
         raise ValueError(
             f"metric '{metric}' requires gold data; pass gold_lookup "
             f"built from the split's question file"
         )
+
+    if metric in JUDGE_METRICS:
+        values = {}
+        for r in load_judge_results(system_name, split):
+            v = r.get(metric)
+            # A question whose scoring failed or was skipped has no score for
+            # this dimension; omit it rather than substituting a value. The
+            # coverage check in compare() will then catch any mismatch between
+            # the two systems being compared.
+            if v is not None:
+                values[r["question_id"]] = float(v)
+        return values
 
     values = {}
     for r in load_results(system_name, split):

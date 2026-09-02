@@ -63,6 +63,12 @@ RETRIEVAL_METRICS = [
 
 EFFICIENCY_METRICS = ["latency_ms", "input_tokens", "output_tokens"]
 
+# Judge dimensions cover only the 200-question subsample, so these comparisons
+# are paired over 200 rather than 1,000 and are reported separately. Proposal
+# 7.3 treats judge scores as a supplementary measure rather than the primary
+# basis for any claim.
+JUDGE_METRICS_LIST = ["faithfulness", "relevance", "coherence"]
+
 
 def load_gold(split: str) -> dict:
     """
@@ -161,6 +167,8 @@ def main():
                         help="skip retrieval metrics (no gold data needed)")
     parser.add_argument("--skip-efficiency", action="store_true",
                         help="skip latency and token comparisons")
+    parser.add_argument("--skip-judge", action="store_true",
+                        help="skip LLM-as-judge comparisons")
     parser.add_argument("--json", nargs="?", const="AUTO", default=None,
                         help="write results as JSON; omit the path to use "
                              "results/significance_{split}.json")
@@ -211,6 +219,14 @@ def main():
         run_block(
             "EFFICIENCY  —  expected to differ by construction, reported for completeness",
             COMPARISONS, EFFICIENCY_METRICS, split, gold_lookup, collected,
+        )
+
+    # ---- LLM-as-judge: 200-question subsample --------------------------------
+
+    if not args.skip_judge:
+        run_block(
+            "LLM-AS-JUDGE  —  200-question subsample, supplementary measure",
+            COMPARISONS, JUDGE_METRICS_LIST, split, gold_lookup, collected,
         )
 
     # ---- RQ2: the same pair, split by D1 -----------------------------------
