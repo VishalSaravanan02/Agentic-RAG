@@ -32,6 +32,7 @@ from src.evaluation.metrics import (
     recall_at_k,
     retrieval_precision,
     duplicate_retrieval_rate,
+    supporting_facts_recall,
 )
 
 FAST = 2000  # fewer resamples than production; keeps the suite quick
@@ -356,3 +357,73 @@ def test_retrieval_precision_counts_only_what_the_model_read():
     ]}
     item = {"supporting_facts": {"title": ["George Eliot", "Bedford College"]}}
     assert retrieval_precision(result, item) == pytest.approx(0.25)
+
+# --- Supporting Facts Recall: gold titles must be deduplicated --------------
+
+def _item(titles):
+    """Minimal HotpotQA item carrying only the supporting-fact titles."""
+    return {"supporting_facts": {"title": titles}}
+
+
+def _result(titles):
+    """Minimal result log with one hop retrieving one chunk per title."""
+    return {"docs_retrieved_per_hop": [[f"{t}_0" for t in titles]]}
+
+
+def test_sfr_deduplicates_repeated_gold_titles():
+    """
+    REGRESSION GUARD. supporting_facts_recall originally scored over the raw
+    supporting_facts['title'] list. HotpotQA annotates supporting facts at
+    SENTENCE level, so a title repeats once per supporting sentence, and 31.7%
+    of evaluation questions have at least one repeated title.
+
+    Scoring the raw list produced a sentence-weighted article recall: for gold
+    [A, A, B] with only B retrieved, the old code returned 1/3 where the
+    documented definition -- the proportion of distinct gold articles found --
+    gives 1/2. This test fails if the deduplication is ever removed.
+    """
+    item = _item(["Jacksonville station", "Jacksonville station", "Silver Meteor"])
+
+    # Only the singly-annotated article was retrieved.
+    assert supporting_facts_recall(_result(["Silver Meteor"]), item) == 0.5
+
+    # Only the doubly-annotated article was retrieved. The old code returned
+    # 2/3 here; both articles are equally weighted now.
+    assert supporting_facts_recall(_result(["Jacksonville station"]), item) == 0.5
+
+
+def test_sfr_symmetric_repetition_is_unaffected():
+    """
+    Where every gold article contributes the same number of supporting
+    sentences the weighting cancels, and deduplication changes nothing. This
+    is the common case, which is why the aggregate impact of the fix is small.
+    """
+    item = _item(["Baadshah", "Baadshah", "Mr. Nice Guy", "Mr. Nice Guy"])
+    assert supporting_facts_recall(_result(["Baadshah"]), item) == 0.5
+    assert supporting_facts_recall(_result(["Baadshah", "Mr. Nice Guy"]), item) == 1.0
+
+
+def test_sfr_boundary_cases():
+    """Full coverage, no coverage, and an item with no annotation."""
+    item = _item(["A", "A", "B"])
+    assert supporting_facts_recall(_result(["A", "B"]), item) == 1.0
+    assert supporting_facts_recall(_result(["Unrelated"]), item) == 0.0
+    assert supporting_facts_recall(_result(["A"]), _item([])) == 0.0
+
+
+def test_sfr_matches_case_insensitively():
+    """Titles are compared lower-cased, as in recall_at_k and precision."""
+    item = _item(["George Eliot", "George Eliot", "University of Oxford"])
+    assert supporting_facts_recall(_result(["george eliot"]), item) == 0.5
+
+
+def test_sfr_never_exceeds_recall_at_k():
+    """
+    Structural invariant: recall_at_k is the binary 'found any' form and SFR
+    the proportional form, so SFR can never exceed it. Deduplicating the gold
+    titles must not break this.
+    """
+    item = _item(["A", "A", "B"])
+    for retrieved in (["A"], ["B"], ["A", "B"], ["Unrelated"]):
+        r = _result(retrieved)
+        assert supporting_facts_recall(r, item) <= recall_at_k(r, item)
