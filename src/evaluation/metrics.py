@@ -119,11 +119,27 @@ def recall_at_k(result: dict, hotpotqa_item: dict) -> int:
 
 def supporting_facts_recall(result: dict, hotpotqa_item: dict) -> float:
     """
-    Proportion of HotpotQA gold supporting facts found in retrieved chunks.
-    Uses the 'supporting_facts' field from the original HotpotQA data.
+    Proportion of a question's DISTINCT gold supporting-fact articles whose
+    source article appears among the retrieved chunks.
+
+    HotpotQA annotates supporting facts at SENTENCE level: the
+    'supporting_facts' field is a list of (title, sent_id) pairs, so a title
+    repeats once per supporting sentence drawn from that article. 31.7% of
+    evaluation questions have at least one repeated title.
+
+    Gold titles are therefore deduplicated before scoring. Without that, an
+    article contributing two supporting sentences would count twice while the
+    match is still made at article level, producing a sentence-weighted
+    article recall: for gold [A, A, B] with only B retrieved the score would
+    be 1/3 rather than 1/2. The weighting carries no information, because
+    retrieving the article marks all of its sentences found regardless of
+    which chunk was actually returned.
+
+    This matches recall_at_k() and retrieval_precision(), which already
+    deduplicate, and matches the definition given in the dissertation.
     """
     supporting_facts = hotpotqa_item.get("supporting_facts", {})
-    gold_titles = supporting_facts.get("title", [])
+    gold_titles = {t.lower() for t in supporting_facts.get("title", [])}
 
     if not gold_titles:
         return 0.0
@@ -134,10 +150,7 @@ def supporting_facts_recall(result: dict, hotpotqa_item: dict) -> float:
         for doc_id in hop_docs:
             retrieved_titles.add(article_title(doc_id).lower())
 
-    found = sum(
-        1 for t in gold_titles
-        if t.lower() in retrieved_titles
-    )
+    found = len(gold_titles & retrieved_titles)
     return found / len(gold_titles)
 
 

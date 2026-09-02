@@ -28,7 +28,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.config import DEV_DATA_PATH, EVAL_DATA_PATH, RANDOM_SEED, RESULTS_DIR
 from src.core.logger import load_results
-from src.evaluation.bootstrap import compare, format_result
+from src.evaluation.bootstrap import compare, format_result, holm_correction
 
 # -----------------------------------------------------------------------------
 # What gets compared.
@@ -241,9 +241,18 @@ def main():
             print(f"\nRQ2: no questions classified {label} — skipping")
             continue
 
+        # Retrieval metrics are included here, not just answer quality: the
+        # RQ2 table reports evidence coverage per subset, and the NO subset is
+        # a useful check, since both systems retrieve identically there and
+        # their retrieval metrics must therefore be equal.
+        rq2_metrics = ANSWER_METRICS + (
+            ["supporting_facts_recall", "retrieval_precision"]
+            if gold_lookup is not None else []
+        )
+
         run_block(
             f"RQ2  —  questions D1 classified as {label}  (n = {len(qids)})",
-            rq2_pair, ANSWER_METRICS, split, gold_lookup, collected,
+            rq2_pair, rq2_metrics, split, gold_lookup, collected,
             question_ids=qids, subset_label=f"D1={label}",
         )
 
@@ -262,13 +271,58 @@ def main():
     print("=" * 100)
     print(f"SUMMARY: {len(collected)} comparisons run, {n_sig} significant at p < 0.05")
     print("=" * 100)
+
+    # ---- Multiple comparisons ----------------------------------------------
+    #
+    # The corrected p-value for a test depends on its RANK within the family it
+    # is corrected against, so the family definition changes the answer. Both
+    # candidate families are reported rather than one being presented as
+    # definitive; which to adopt is a judgement for the write-up.
+
+    quantitative = [r for r in collected
+                    if r["metric"] not in JUDGE_METRICS_LIST
+                    and r["subset"] == "all"]
+    rq3_family = [r for r in quantitative
+                  if r["comparison"] in ("RQ3a", "RQ3b")
+                  and r["metric"] in ANSWER_METRICS + [
+                      "recall_at_k", "supporting_facts_recall"]]
+
+    families = {
+        "RQ3 only (correcting within research question)": rq3_family,
+        "All quantitative comparisons": quantitative,
+    }
+
+    holm_report = {}
+    for name, family in families.items():
+        if not family:
+            continue
+        corrected = holm_correction(family)
+        holm_report[name] = [
+            {k: r[k] for k in ("comparison", "system_a", "system_b", "metric",
+                               "observed_difference", "p_value", "p_holm",
+                               "significant", "significant_holm")}
+            for r in corrected
+        ]
+
+        print()
+        print(f"HOLM CORRECTION — family: {name}  ({len(family)} tests)")
+        print("-" * 100)
+        for r in corrected:
+            mark = "*" if r["significant_holm"] else " "
+            lost = ""
+            if r["significant"] and not r["significant_holm"]:
+                lost = "   <- significant raw, not after correction"
+            print(f" {mark} {r['comparison']:<5} {r['metric']:<24} "
+                  f"raw {r['p_value']:.4f}  ->  Holm {r['p_holm']:.4f}{lost}")
+
     print()
     print("NOTE ON MULTIPLE COMPARISONS")
-    print("  These are uncorrected p-values, as pre-specified in proposal 7.4.")
-    print("  Running many tests inflates the chance of a false positive, so a")
-    print("  correction (e.g. Holm) should be reported alongside. The choice of")
-    print("  correction FAMILY materially changes the RQ3b verdict — see the")
-    print("  dissertation and confirm the family with the supervisor.")
+    print("  Raw p-values are the pre-specified primary figures (proposal 7.4);")
+    print("  the Holm-corrected values above are reported alongside them.")
+    print("  A test's multiplier depends on its rank within its family, so the")
+    print("  choice of family materially changes the RQ3b verdict. Judge")
+    print("  comparisons are excluded from both families, being a supplementary")
+    print("  measure (proposal 7.3).")
     print()
 
     if args.json:
@@ -280,6 +334,7 @@ def main():
             "seed": RANDOM_SEED,
             "n_comparisons": len(collected),
             "results": collected,
+            "holm_corrected": holm_report,
         }
         with open(out_path, "w") as f:
             json.dump(payload, f, indent=2)

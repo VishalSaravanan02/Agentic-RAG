@@ -304,6 +304,49 @@ def compare(system_a: str, system_b: str, split: str, metric: str,
     return result
 
 
+def holm_correction(results: list[dict]) -> list[dict]:
+    """
+    Holm-Bonferroni step-down correction over a family of tests.
+
+    Returns a new list, ordered by raw p-value ascending, with two fields added
+    to each entry: 'p_holm' and 'significant_holm'.
+
+    The procedure sorts the m raw p-values ascending and multiplies the i-th
+    (zero-indexed) by (m - i), then enforces monotonicity by carrying forward
+    the running maximum, so a corrected value can never fall below one ranked
+    before it. Values are capped at 1.0.
+
+    Holm is uniformly more powerful than Bonferroni -- only the smallest
+    p-value is multiplied by the full family size m, where Bonferroni
+    multiplies every one by m -- while controlling the same family-wise error
+    rate. Note that the multiplier for a given test therefore depends on its
+    RANK within the family, so adding or removing a test can change the
+    corrected value of an unrelated one.
+
+    The choice of family is a judgement, not a computation. Passing a
+    different subset of comparisons here yields a different answer, which is
+    why run_significance.py reports more than one family rather than
+    presenting a single corrected figure as definitive.
+    """
+    if not results:
+        return []
+
+    ordered = sorted(results, key=lambda r: r["p_value"])
+    m = len(ordered)
+
+    out = []
+    running_max = 0.0
+    for i, r in enumerate(ordered):
+        adjusted = min(1.0, max(running_max, (m - i) * r["p_value"]))
+        running_max = adjusted
+        entry = dict(r)
+        entry["p_holm"] = adjusted
+        entry["significant_holm"] = adjusted < (1 - CONFIDENCE_LEVEL)
+        out.append(entry)
+
+    return out
+
+
 def format_result(r: dict) -> str:
     """One-line human-readable summary of a comparison."""
     p = r["p_value"]
