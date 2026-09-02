@@ -33,31 +33,33 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.config import DEV_DATA_PATH, EVAL_DATA_PATH, RANDOM_SEED
 from src.core.logger import load_results
-from src.evaluation.metrics import exact_match, f1_score
+from src.evaluation.metrics import article_title, exact_match, f1_score
 
 # Proposal 7.5 fixes the formal sample size at 50 cases.
 DEFAULT_N = 50
 
 
-def load_question_types(split: str) -> dict:
+def load_gold_items(split: str) -> dict:
     """
-    Return {question_id: type} from the split's gold file.
+    Return {question_id: hotpotqa_item} from the split's gold file.
 
-    HotpotQA labels each question 'bridge' or 'comparison'. The result logs do
-    not carry this field, so stratification requires the gold file.
+    Supplies both the question type, needed to stratify the sample, and the
+    gold supporting-fact titles, needed to show which required evidence was
+    actually retrieved. Neither is present in the result logs.
     """
     path = DEV_DATA_PATH if split == "dev" else EVAL_DATA_PATH
 
     if not os.path.exists(path):
         raise FileNotFoundError(
             f"Gold data not found at {path}. Run scripts/download_data.py first. "
-            f"Question type is needed to stratify the sample."
+            f"Question type and supporting facts are needed to stratify the "
+            f"sample and to show which evidence was retrieved."
         )
 
     with open(path, "r") as f:
         questions = json.load(f)
 
-    return {q["id"]: q.get("type", "unknown") for q in questions}
+    return {q["id"]: q for q in questions}
 
 
 def stratified_sample(failures: list, n: int, seed: int) -> list:
@@ -124,6 +126,8 @@ def stratified_sample(failures: list, n: int, seed: int) -> list:
 def print_case(i: int, r: dict, ba_lookup: dict) -> None:
     qid = r["question_id"]
     ba_r = ba_lookup.get(qid)
+    gold_titles = r["_gold_titles"]          # original casing, for display
+    gold_lower = {t.lower() for t in gold_titles}
 
     print("=" * 70)
     print(f"FAILURE {i}  (id: {qid})   type: {r['_type']}")
@@ -152,10 +156,34 @@ def print_case(i: int, r: dict, ba_lookup: dict) -> None:
             tag = "reactive" if h > n_plan else "planned "
             print(f"  Hop {h} [{tag}]: {q}")
 
-    print("\nRetrieved article titles per hop:")
+    # The gold supporting-fact articles are what the question actually needed.
+    # Printing them next to what was retrieved is what separates a retrieval
+    # failure from a reasoning or grounding failure.
+    print("\nGOLD supporting-fact articles (what was needed):")
+    for t in gold_titles:
+        print(f"  - {t}")
+
+    print("\nRetrieved article titles per hop  (*** = a gold article):")
+    found = set()
     for h, docs in enumerate(r["docs_retrieved_per_hop"], 1):
-        titles = sorted({"_".join(d.split("_")[:-1]) for d in docs})
-        print(f"  Hop {h}: {', '.join(titles[:6])}")
+        titles = sorted({article_title(d) for d in docs})
+        marked = []
+        for t in titles:
+            if t.lower() in gold_lower:
+                found.add(t.lower())
+                marked.append(f"***{t}***")
+            else:
+                marked.append(t)
+        print(f"  Hop {h}: {', '.join(marked)}")
+
+    missed = [t for t in gold_titles if t.lower() not in found]
+    print(f"\n  EVIDENCE COVERAGE: {len(found)}/{len(gold_titles)} gold articles retrieved")
+    if missed:
+        print(f"  NEVER RETRIEVED: {', '.join(missed)}")
+        print("  --> evidence was missing: consider retrieval or decomposition failure")
+    else:
+        print("  --> all required evidence was retrieved: consider reasoning, "
+              "grounding, or error propagation")
 
     print(f"\nMain System answer: {r['final_answer'][:150]}")
     if ba_r:
@@ -174,15 +202,18 @@ def inspect(split: str, n: int, reactive_only: bool = False,
     ms = load_results("main_system", split)
     ba = load_results("baseline_a", split)
     ba_lookup = {r["question_id"]: r for r in ba}
-    types = load_question_types(split)
+    gold = load_gold_items(split)
 
     failures = []
     for r in ms:
         em = exact_match(r["final_answer"], r["gold_answer"])
         f1 = f1_score(r["final_answer"], r["gold_answer"])
         if em == 0 and f1 < 0.3:
+            item = gold.get(r["question_id"], {})
             r["_f1"] = f1
-            r["_type"] = types.get(r["question_id"], "unknown")
+            r["_type"] = item.get("type", "unknown")
+            # Access pattern matches metrics.supporting_facts_recall().
+            r["_gold_titles"] = item.get("supporting_facts", {}).get("title", [])
             failures.append(r)
 
     # Optional filter: keep only failures that entered reactive mode, i.e. the
