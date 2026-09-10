@@ -1,0 +1,1264 @@
+{
+  "meta": {
+    "split": "eval",
+    "sample_source": "results/failure_sample_eval.json",
+    "sample_seed": 42,
+    "n_cases": 50,
+    "failure_criterion": "EM == 0 and F1 < 0.3 on the Main System",
+    "population": {
+      "total_failures": 395,
+      "bridge": 349,
+      "comparison": 46
+    },
+    "categories": [
+      "unanswerable",
+      "decomposition failure",
+      "retrieval failure",
+      "error propagation",
+      "reasoning failure",
+      "grounding failure",
+      "classification failure"
+    ],
+    "procedure": [
+      "1. Read question, gold answer and gold supporting sentences. Is the gold answer supported by the gold evidence, and does it answer the question asked? If not, the case is unanswerable. Assign unanswerable as primary but CONTINUE through the remaining steps: a defective gold does not mean the system behaved correctly, and any independent failure is recorded as a secondary.",
+      "2. Establish evidence coverage: which gold articles were retrieved, which were not. Treat this as a routing heuristic rather than a verdict. Coverage is computed at article level, so a case may read as partial while the gold answer was in fact present in a retrieved chunk (case 4), or read as full while the specific supporting sentence fell outside the retrieved chunks. Where the branch matters, check the chunk text with scripts/case_dossier.py.",
+      "3. Read the plan (sub-queries) and the queries actually issued per hop.",
+      "4. Assess ALL SIX categories yes/no, with one line of evidence each.",
+      "4a. Before recording retrieval failure, test reachability against the index with two or three well-formed queries, each constructible from information the system actually held; a single miss is not a test. Record the queries tried and their outcome in the notes. Then distinguish two outcomes. (i) The system held the name or distinguishing terms of the target article and never queried them: the failure is in query formulation, i.e. decomposition failure. (ii) The system's queries were reasonable given what it knew, and the article surfaces only under a framing the system had no reason to adopt: retrieval failure. Reachability alone does not imply decomposition failure. Added after case 11 and refined after case 5.",
+      "5. Assign one primary category; list any others as secondary.",
+      "6. Record the three attributes.",
+      "7. Where a case is heading for unanswerable, read the full gold articles from data/processed/chunks.json before deciding, not only the supporting sentences. A sentence extracted from an article can mislead about what the article as a whole says. Added after case 17."
+    ],
+    "precedence_rule": "Where more than one category applies, the more specific diagnosis is primary. Decomposition failure and error propagation are specific explanations of why evidence was missing and so take precedence over the generic retrieval failure. Grounding failure is specific (the answer is absent from the evidence) and takes precedence over reasoning failure, which is the residual.",
+    "attributes": {
+      "refused": "the system declined to answer for want of evidence",
+      "stopped_early": "D3 declared sufficiency while a gold article was still unretrieved",
+      "d1_misclassified": "D1 classified the question as single-hop when the answer could not be derived from any single gold article",
+      "second_valid_answer": "The question as worded admits an answer other than the gold which is supported by the retrieved evidence, and the system gave that answer. Distinct from unanswerable / defective gold, where the gold answer is itself wrong: here the gold is correct but not uniquely correct, and the system is penalised for selecting a defensible alternative. Added at case 27 after three instances; cases 1 and 26 backfilled."
+    },
+    "decided_by": "Reviewed case by case by the author; evidence assembled and a proposed call offered by an AI assistant, with the final call made by the author.",
+    "open_questions": [
+      "Watch for questions admitting a second valid answer that the scoring does not accept (raised at case 1, not acted on). If the pattern recurs, decide how to report it. Second instance recorded at case 26 (the Las Vegas Hilton against the International Hotel, both previous names of the same hotel, the latter stated in the retrieved evidence). Two occurrences in twenty-six cases; if the count reaches four or five, treat separately in the write-up rather than in per-case notes.",
+      "Cross-branch precedence (a search-side failure co-occurring with a thinking-side failure) is not covered by the precedence rule. Case 2 was resolved as retrieval primary. Rule deferred pending more cases.",
+      "Comparison questions turning on geographic or spatial common sense may be systematically hard under a strict grounding instruction, because the deciding fact (here, relative longitude) appears nowhere in the corpus. Raised at case 9. If more of the six comparison cases show this shape, consider reporting it as an interaction between D5 and question type rather than as ordinary reasoning failures."
+    ],
+    "grounding_vs_reasoning_test": "Could the claim have been constructed from the retrieved chunk text, however faultily? If yes it is a reasoning failure. Grounding failure is reserved for claims that cannot be derived from the retrieved context at all and must therefore have come from parametric knowledge. Grounding failure is NOT conditional on the claim being correct: the sample contains only EM=0 cases, so a correct but ungrounded answer cannot appear in it, and making correctness part of the test would empty the category by construction.",
+    "unanswerable_definition": "Assessed on the gold alone: is the gold answer supported by the gold supporting sentences, and does it answer the question asked? Deliberately independent of whether the system answered correctly, so that the reported count means 'defective gold' rather than 'defective gold where the system happened to succeed'. Cases assigned unanswerable additionally carry an unanswerable_subtype distinguishing defective gold from scoring artefact, so that the single category required by proposal 7.5 can be reported intact while the two quite different situations it covers remain separable in the discussion. Note that 'unanswerable' does not mean no system could score on the question. Where the gold answer is defective, EM = 1 typically remains attainable by giving the answer the annotator intended, which is often the very reasoning error the taxonomy counts as a failure elsewhere. The category means that scoring against the gold does not measure what it purports to measure, and consequently that no failure category can be determined, since 'what went wrong' is defined relative to a target and the target is unreliable.",
+    "unanswerable_subtypes": {
+      "defective gold": "The gold answer is not supported by the gold supporting sentences, or does not answer the question asked (case 3).",
+      "scoring artefact": "The gold answer is sound and the system's answer is substantively correct, but EM and F1 score it as a failure, typically because the system answered in a sentence where the gold answer is a single word or short phrase (case 10)."
+    },
+    "retrieval_failure_caveat": "'Retrieval failure' throughout means failure under this specific configuration: dense retrieval only, all-MiniLM-L6-v2 embeddings, top-k = 5, 100-word chunks with 20-word overlap, no sparse or hybrid component and no reranking. It is not a claim that the evidence is unreachable in principle. Several cases so categorised would plausibly be recovered by BM25 on a distinctive token, by a hybrid retriever, or by reranking over a larger candidate pool. The category should be read in the discussion as retrieval-configuration failure, and connects directly to the acknowledged choices of MiniLM over all-mpnet-base-v2 for speed, and of an untuned top-k.",
+    "classification_failure_definition": "D1 classified the question as single-hop; the answer could not be derived from any single gold article; and reachability testing confirms that a second hop would have recovered the missing evidence. All three conditions are required. The third excludes cases where the misclassification was incidental because no hop count would have helped, as at case 6.",
+    "departure_from_proposal": "Proposal 7.5 fixes six failure categories. A seventh, classification failure, was added at case 21. The justification is structural rather than numerical: the proposal names five decision mechanisms in section 5.1, and the six categories map onto D2 (decomposition failure), D5 (grounding failure), retrieval and reasoning, with D3 and D4 covered by the stopped_early attribute, leaving D1 with no corresponding category. A taxonomy that cannot attribute a failure to one of the system's own named mechanisms under-covers the architecture it is analysing, and the omission bears directly on RQ2, which asks whether D1's gatekeeping adds value. Three cases in the first twenty-one turned on D1 routing a two-article question to a single hop.",
+    "corrections": [
+      "Cases 20 and 30 were initially recorded as comparison and corrected to bridge, matching HotpotQA's type label in the sample metadata. Both are phrased as 'what do X and Y have in common', which reads as a comparison, but the dataset types them as bridge. The error was found when the recorded type counts (42/8) failed to match the stratified sample allocation (44/6). No verdict was affected; the correction changes the type-level breakdown only."
+    ]
+  },
+  "cases": [
+    {
+      "n": 1,
+      "question_id": "5a713f3c5542994082a3e6eb",
+      "type": "bridge",
+      "question": "Where does the train that runs from NYC and Miami station at in Florida?",
+      "gold_answer": "Jacksonville station",
+      "system_answer": "Miami, Florida",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Jacksonville station"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": true
+      },
+      "rationale": "D3 declared sufficiency after a single hop with Jacksonville station unretrieved, and the system answered with the train's terminus taken from the Silver Meteor passage. The premature stop is not, however, what cost the answer: Baseline A retrieved both gold articles on its single search, and Ablation 1 held Jacksonville station in context on all four of its hops, yet both answered 'Miami station'. Every configuration that had the required evidence still failed to use it, which locates the failure at synthesis rather than at retrieval or planning.",
+      "notes": "Decomposition was considered as a secondary and rejected: the plan's later sub-queries would have found the missing article, and the evidence shows that finding it would not have changed the answer. Four systems converged on a Miami answer, which may indicate the question admits a second valid reading; logged as an open question rather than acted on."
+    },
+    {
+      "n": 2,
+      "question_id": "5a7349125542994cef4bc505",
+      "type": "bridge",
+      "question": "Baadshah is an Indian action comedy film that was inspired by what Hong Kong action movie starring Jackie Chan and Richard Norton?",
+      "gold_answer": "Mr. Nice Guy",
+      "system_answer": "The Mask",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Mr. Nice Guy (1997 film)"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [
+        "reasoning failure"
+      ],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The first sub-query named both Jackie Chan and Richard Norton, reproducing the distinguishing content of the gold sentence, and still returned nothing relevant. No system retrieved the Mr. Nice Guy article across eleven distinct queries, making this a shared retrieval floor rather than a consequence of the agentic strategy. The system did hold the Baadshah passage listing five candidate inspirations, one of which was the correct answer, and chose another; but with no retrieved information about any of the five, and D5 forbidding recourse to parametric knowledge, it had no grounded basis on which to discriminate. The missing article is therefore treated as the primary cause and the mis-selection as secondary. REVISED after case 11: a reachability test returns Mr. Nice Guy (1997 film)_0 at rank 1 (similarity 0.8035) for the query 'Mr. Nice Guy 1997 Hong Kong action film Jackie Chan', so the article was not unreachable and shared_floor is corrected to false. The title was moreover in context from hop 1, within the Baadshah inspiration list, and was never queried. Retrieval failure is nonetheless retained as primary rather than reclassified as decomposition failure, because the system held five candidate titles with no retrieved information distinguishing them and no basis for selecting which to query.",
+      "notes": "That the system answered 'The Mask' establishes it had the inspiration list in context, since that title appears in no other retrieved article. Baseline B and Ablation 1 also answered 'The Mask'; Baseline A declined."
+    },
+    {
+      "n": 3,
+      "question_id": "5a7354d55542994cef4bc55a",
+      "type": "bridge",
+      "question": "Which of the three main psychedelic compounds found in the Psilocybin genus mushroom are converted to psilocin by the body?",
+      "gold_answer": "psilocin",
+      "system_answer": "Psilocybin and baeocystin",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "unanswerable",
+      "secondary": [
+        "reasoning failure"
+      ],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The gold answer contradicts its own supporting evidence. The Psilocybin passage states that psilocybin is converted by the body to psilocin, so the compound the question asks for is psilocybin; psilocin is the product of the conversion, not its subject. The annotation has taken the answer from the wrong side of the sentence. Retrieval was not at fault: both gold articles were returned on three separate hops. The system additionally over-extended its answer to include baeocystin, which the retrieved text does not support, and this is recorded as a secondary reasoning failure rather than a grounding failure because the claim is derivable from retrieved text via a faulty elimination step (the Psilocybe passage names the three compounds; excluding psilocin as the product leaves the other two).",
+      "notes": "Against the corrected gold 'psilocybin' the system's answer scores F1 = 0.50, above the F1 < 0.3 threshold, so the case would not have entered the failure population at all had the annotation been sound. Baseline A answered 'Psilocybin' (EM = 1, F1 = 1.0 against the corrected gold) and Ablation 1 did likewise; both are scored as failures. Also observed: the plan allocated one hop per named compound, so the Baeocystin article entered the context immediately before synthesis, while Baseline A's single query never retrieved it. Hop 3 returned five chunks all previously seen and hop 2 three of five, an instance of the duplicate retrieval rate reported for this system.",
+      "unanswerable_subtype": "defective gold"
+    },
+    {
+      "n": 4,
+      "question_id": "5a73ae3b55429978a71e907c",
+      "type": "bridge",
+      "question": "Japanese destroyer Oite participated in what conflict that ended with the surrender of the American forces to the Empire of Japan?",
+      "gold_answer": "Battle of Wake Island",
+      "system_answer": "World War II",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Battle of Wake Island"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Article-level coverage reads 1/2, but the gold answer string was in context on every hop: the retrieved chunk Japanese destroyer Oite (1924)_0 states that during the Pacific War she participated in the Battle of Wake Island in December 1941. Two near-identical destroyer stubs retrieved alongside it name the same battle, so the phrase was in front of the model three times on hop 1 alone. The Battle of Wake Island article was needed only to confirm that this was the engagement at which American forces surrendered. The system answered 'World War II', which is grounded in retrieved text but wrong: hops 3 and 4 filled the context with the Surrender of Japan, Potsdam Declaration and Japanese Instrument of Surrender passages, all concerning Japan's 1945 surrender to the Allies rather than the American surrender at Wake Island in 1941. Retrieval delivered what was required and the plan reached it at hop 2; the failure is at synthesis.",
+      "notes": "Second instance of the pattern first seen at case 3, and sharper here: sub-query 4 ('to which empire did the American forces surrender') is a fair reading of the question but retrieved material about the surrender running in the opposite direction, and two hops of surrender-framed retrieval displaced a fact the system already held. Baseline A, Baseline B and Ablation 1 all answered 'Pacific War', the opening clause of the same Oite sentence, so four systems took a wrong span from one passage. Also note that article-level evidence coverage misroutes this case: it reads 1/2 and points at the search branch, while the required text was retrieved throughout."
+    },
+    {
+      "n": 5,
+      "question_id": "5a74994a55429974ef308c2e",
+      "type": "bridge",
+      "question": "Who was the American congressman whose actions led to a CIA program to arm Jihadi warriors in Afghanistan in the 1980's?",
+      "gold_answer": "Charlie Wilson",
+      "system_answer": "The retrieved information does not provide the name of the American congressman.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Charlie Wilson's War (film)"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The congressman's name appears in only one place in the gold evidence, the Charlie Wilson's War (film) article, and that article was never retrieved by any system. Both Operation Cyclone chunks that were retrieved describe the programme without naming Wilson, so the answer was genuinely absent from context and the refusal is the correct output rather than a failure of synthesis. Eleven queries across the four systems, four of which combined 'American congressman' with 'Afghanistan' and '1980s', failed to surface the article, establishing a shared retrieval floor. Sub-query 1 was notably degraded, dropping both 'Afghanistan' and 'Jihadi warriors' from the original question and returning generic CIA biographies, but this is not treated as a decomposition failure because the reactive query at hop 4 restored those terms and still missed, as did Ablation 1 running an equivalent query three times and Baseline A using the unmodified question. REVISED after cases 11 and 5 reachability testing: four queries were tried against the index, all constructible from information the system held. 'American congressman whose efforts led to Operation Cyclone' returned only the Operation Cyclone chunks; 'congressman and CIA operative who supported the Afghan mujahideen' likewise; 'Operation Cyclone congressman Gust Avrakotos' returned weather articles, the embedder reading Cyclone in its meteorological sense. But 'film about a US congressman and the Afghan mujahideen' returned Charlie Wilson's War (film)_0 at rank 1, similarity 0.553. The article is therefore reachable, and the earlier claim that no constructible query could find it is withdrawn. Retrieval failure is nonetheless retained as primary: the only query that succeeds is framed around the article being a film, and the system had no reason to adopt that framing, since the user asked a historical question and nothing retrieved indicated the answer lived in an article about a movie. This is outcome (ii) under procedure step 4a.",
+      "notes": "All four systems refused. None invented a name despite the context containing several plausible American CIA-adjacent figures (Stephen Slick, Howard Warren Buffett, William O. Studeman), so D5 held under conditions that invited a guess. This is a positive grounding result located inside the failure sample and is only visible because refusals are recorded separately from the category. The degraded sub-query 1 is worth carrying forward: if the same term-stripping recurs on a case where retrieval would otherwise have succeeded, it becomes a decomposition failure rather than an incidental observation. The contrast between the failing and succeeding queries isolates a specific weakness of dense retrieval: the target article's opening sentence is written in film-review register ('a 2007 American comedy-drama film, based on the story of'), so a query framed as a historical question embeds away from it even when describing the same events accurately. Where the answer lives in an article whose genre differs from the question's framing, semantic similarity works against retrieval."
+    },
+    {
+      "n": 6,
+      "question_id": "5a75f0ea5542994ccc91866c",
+      "type": "bridge",
+      "question": "What major truck road is located in Backford Cross?",
+      "gold_answer": "The A41",
+      "system_answer": "A5117 road",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "1/2",
+      "missed_articles": [
+        "A41 road"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": true,
+        "second_valid_answer": false
+      },
+      "rationale": "The Backford Cross chunk names both roads meeting at the junction, the A41 and the A5117, but the phrase identifying the A41 as a major trunk road appears only in the A41 road article, which no system retrieved. The system therefore held two candidates with nothing to discriminate between them and selected the A5117, plausibly because a dedicated A5117 chunk was returned while the A41 appeared only as a passing mention. All four systems answered A5117, and Baseline B missed the article across two hops, establishing a shared retrieval floor. A reasoning secondary was considered and rejected: the retrieved text offers only weak signals (the A5117 described as single carriageway, and as crossing the A41) and neither establishes trunk-road status, which D5 forbids the system from supplying from parametric knowledge. REVISED after case 11: a reachability test returns A41 road_0 at rank 1 (similarity 0.78) for the query 'A41 road England major trunk road', so the article was not unreachable and shared_floor is corrected to false. The name 'A41' was in the retrieved Backford Cross chunk throughout, so the system could have constructed that query; what prevented it was D1 routing the question to a single hop. Retrieval failure is retained as the least-bad fit among the six categories, none of which covers a routing error, and the d1_misclassified attribute carries the substantive diagnosis.",
+      "notes": "First D1 = NO case in the sample, and the classification is wrong on the merits: the answer cannot be derived from the Backford Cross article alone, since it names both roads without ranking them. The misclassification nonetheless cost nothing, as Baseline B performed two hops and still missed the A41 article. This mirrors case 1, where a premature D3 stop was likewise not the operative cause of failure. Ablation 1 also classified the question as single-hop. ADDED at case 21: this case does not meet the definition of classification failure introduced there, despite d1_misclassified being true, because the third condition fails. No system retrieved the A41 article and Baseline B missed it across two hops, so a second hop would not have recovered the evidence and the misclassification was not causal."
+    },
+    {
+      "n": 7,
+      "question_id": "5a78e3b955429974737f78f1",
+      "type": "comparison",
+      "question": "Who was born first, Javier Frana or Sherwood Stewart?",
+      "gold_answer": "Sherwood Stewart",
+      "system_answer": "Javier Frana",
+      "hops": 4,
+      "stop_condition": "sufficiency",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both birth dates were present in retrieved text from hop 2 onward: Javier Frana_0 gives 25 December 1966 and Sherwood Stewart_0 gives 6 June 1946. The plan was textbook for a comparison question, asking each birth date in turn and then comparing, and retrieval returned exactly the right article on each of the first two hops. With two explicit dates twenty years apart in context, the system nonetheless reported the later-born man as born first. There is no missing evidence, no defective gold and no ambiguity in the question, which makes this the least equivocal reasoning failure recorded so far.",
+      "notes": "All four systems answered 'Javier Frana', the first person named in the question, suggesting a positional bias; this is the second case in seven where every configuration converged on the same wrong answer. Context pollution was present but is exonerated as a cause: by hop 4 the context held roughly a dozen birth dates belonging to unrelated people, yet Ablation 1 failed identically with a clean two-hop context containing only the two relevant articles. D3 also failed here in the opposite direction to case 1, returning NO three times despite holding both dates from hop 2, and declaring sufficiency only after hop 4 had retrieved a television episode summary and an unrelated biography. Premature and belated stopping therefore both appear within the first seven cases."
+    },
+    {
+      "n": 8,
+      "question_id": "5a7a48c45542994f819ef1b7",
+      "type": "bridge",
+      "question": "With whom was a notable partner of Elena Krykanova a two-time Olympic champion with?",
+      "gold_answer": "Oksana Grishuk",
+      "system_answer": "Evgeni Platov",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Evgeni Platov"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The bridge entity was in context from hop 1: Elena Krykanova_0 states that with former partner Evgeni Platov she is a three-time World Junior champion. The plan, however, was fixed before that name could be known, so every sub-query referred to the target by description as 'the notable partner of Elena Krykanova'. That phrasing embeds close to Krykanova herself, and hops 2, 3 and 4 duly returned Krykanova alongside assorted unrelated female skaters. The system therefore never retrieved Platov's article and answered with the bridge entity, which is the best answer available from the evidence it held. The counterfactual is demonstrated rather than assumed: Ablation 1, identical but for the absence of decomposition, read Platov's name from the hop 1 chunk, queried 'Evgeni Platov Olympic achievements' at hop 2, and retrieved both Evgeni Platov_0 and Oksana Grishuk_0, each of which states the two Olympic titles outright.",
+      "notes": "A direct instance of the trade-off identified in the design chapter, where D2 commits to a plan before the bridge entity is known, in contrast to ReAct's just-in-time planning. Retrieval is exonerated: it answered the queries it was given accurately and was never asked about Platov. Ablation 1 answered 'Evgeni Platov' as well, but from a different cause, having held both gold articles for three hops; its failure would be a reasoning failure. All four systems returned the same answer for two distinct reasons, which cautions against reading convergent answers across systems as evidence of a common cause."
+    },
+    {
+      "n": 9,
+      "question_id": "5a7a4f335542990198eaf11e",
+      "type": "comparison",
+      "question": "Who is from farther west, Kings of Convenience or Belle and Sebastian?",
+      "gold_answer": "Belle and Sebastian",
+      "system_answer": "Kings of Convenience",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The plan was correct for a comparison question and retrieval delivered on it: hop 1 returned Kings of Convenience_0 giving Bergen, Norway, and hop 2 returned Belle and Sebastian_0 giving Glasgow. Both locations were therefore in context from hop 2 onward, and Glasgow at roughly 4 degrees west lies farther west than Bergen at roughly 5 degrees east. The reactive query at hop 4 sought coordinates for both cities, a sensible attempt to obtain the deciding fact, but the corpus holds no coordinates and returned Bergen_0 instead, which describes Bergen as being on the west coast of Norway. No comparable passage was retrieved for Glasgow, so the context ended with the word 'west' attached to exactly one of the two cities, and the system answered accordingly.",
+      "notes": "Second instance of a reactive hop actively harming the answer, after case 4. Note also that the deciding fact, relative longitude, appears nowhere in the gold evidence or the retrieved text in any form: the evidence supplies both place names and the comparison must be inferred, which sits awkwardly against D5's instruction to use retrieved information only. Baseline A answered correctly with EM = 1 but never retrieved the Kings of Convenience article at all, its context holding Belle and Sebastian alongside film and song distractors; it named the only band available to it, so its correct score here does not reflect a genuine comparison and should not be read as an advantage of single-hop retrieval."
+    },
+    {
+      "n": 10,
+      "question_id": "5a7a567255429941d65f25bd",
+      "type": "bridge",
+      "question": "What was Iqbal F. Qadir on when he participated in an attack on a radar station located on western shore of the Okhamandal Peninsula?",
+      "gold_answer": "flotilla",
+      "system_answer": "Part of the flotilla that attacked the radar station in Dwarka, India.",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Dwarka"
+      ],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "scoring artefact",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The system's answer is correct. The retrieved chunk Iqbal F. Qadir_0 states that he was part of the flotilla that attacked the radar station in Dwarka, and the system reported exactly that. It scores F1 = 0.182 solely because the gold answer is a single word and the answer given is eleven, so ten tokens count against precision; had it answered 'flotilla' alone the score would have been 1.0. Nothing in the pipeline failed. D2 produced a four-step plan, hop 1 happened to retrieve the one article answering the whole question, and D3 correctly recognised sufficiency after a single hop and skipped the three remaining planned sub-queries. D5 then grounded the answer by quoting the retrieved sentence. The case is therefore recorded as unanswerable with subtype scoring artefact rather than assigned to any failure category.",
+      "notes": "The Main System was the only one of the four to extract the correct fact, despite all four holding the identical chunk. Baseline A answered 'Dwarka, India' (the location), and Baseline B and Ablation 1 both answered 'Second war with India' (the conflict); Ablation 1 held the chunk across all four hops without reaching the answer. This is also a D3 success, sitting between case 1 where D3 stopped too early and case 7 where it stopped too late. Coverage reads 1/2 because the Dwarka article was never retrieved, but Dwarka was needed only to confirm the peninsula and the system did not require it, the same pattern as case 4. Directly relevant to the write-up: the EM = 0 and F1 < 0.3 criterion is justified in the proposal as filtering out wording mismatches, and this case shows it does not filter verbose but correct answers, a failure mode concentrated precisely where D5's grounded-synthesis prompt produces a sentence rather than a phrase."
+    },
+    {
+      "n": 11,
+      "question_id": "5a7b22f8554299042af8f6ff",
+      "type": "bridge",
+      "question": "Who was the opponent of the Republican of Indenosia when Nugroho Notosusanto served as a member of the Student Army",
+      "gold_answer": "the Dutch Empire",
+      "system_answer": "Communist Party of Indonesia (PKI)",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Indonesian National Revolution"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The bridge entity was named in the hop 1 chunk: Nugroho Notosusanto_0 states that he served during the Indonesian National Revolution from 1945 to 1949. The plan, fixed before that name could be known, referred to the war only by description, and sub-query 4 asked about opponents 'during the time period when Nugroho Notosusanto served in the Student Army'. That description is built from his name and his unit, so it embeds close to his biography: re-running sub-query 4 against the index reproduces hop 4 exactly, returning Nugroho Notosusanto_0 at 0.6139 and the PKI fragment at 0.5944, with the Revolution article absent from the top five. Substituting the war's name for the description, changing nothing else, returns Indonesian National Revolution_0 at rank 1. Retrieval is therefore exonerated and shared_floor is false: the article is reachable at rank 1 for a query naming it, and no system ever issued such a query. With the Revolution article absent, the only named adversary in context was the Communist Party of Indonesia, from a fragment about a propaganda film Notosusanto co-wrote concerning a 1965 coup, and the system answered with it.",
+      "notes": "Same failure as case 8: the plan describes the bridge entity rather than naming it, and every query built on that description is drawn back to the entity it was described from. An aggravating factor, not the cause: the plan's four sub-queries consumed the entire four-hop budget, so the reactive repair path driven by D3's MISSING line never ran, and sub-queries 1, 2 and 3 are all answered by a single sentence in the hop 1 chunk, with hops 2 and 3 re-fetching that chunk as repeats. A spare hop would not by itself have helped, since a reactive query would still have had to name the Revolution. Ablation 1 stalled completely here, issuing the identical query on hops 2, 3 and 4 and returning identical chunks. Separately measured while investigating this case: across the full evaluation, 127 of 744 multi-hop questions (17.1%) produce a plan of four or more sub-queries and then hit the ceiling, so the reactive mechanism is structurally unreachable for them; within the failure sample the rate is 14 of 43 (32.6%), roughly double. This is not currently reported in the dissertation."
+    },
+    {
+      "n": 12,
+      "question_id": "5a7bcc0f554299042af8f7e2",
+      "type": "bridge",
+      "question": "How many top 20 singles did the singer that released the 1990 album \"Reputation\" have?",
+      "gold_answer": "six",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Dusty Springfield"
+      ],
+      "primary": "error propagation",
+      "secondary": [
+        "reasoning failure"
+      ],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Hop 1 retrieved both Reputation and Rarities_0, identifying Dusty Springfield's 1990 album, and Reputation (Taylor Swift album)_0, a different album of the same name scheduled for release in November 2017. The question specifies 1990 and both chunks state their dates, so the evidence needed to disambiguate was present. The reactive query at hop 3 instead hedged across both artists, asking for 'number of top 20 singles by Dusty Springfield or Taylor Swift', which embedded toward neither cleanly and returned Swift material. Hop 4 then dropped Springfield altogether and queried only for Taylor Swift, committing the wrong resolution and spending the final hop on the wrong artist. A wrong intermediate fact was therefore carried into a later query and determined the outcome. Retrieval is exonerated by reachability testing: Dusty Springfield_0 is returned at rank 1 for 'How many top 20 singles did Dusty Springfield have?' (0.5631) and for 'Dusty Springfield top 20 singles Billboard Hot 100' (0.618), both queries of a form the system demonstrably could produce, since it produced almost exactly that for Taylor Swift at hop 4. The underlying disambiguation error is a reasoning failure and is recorded as secondary, error propagation being the more specific diagnosis under the precedence rule.",
+      "notes": "The plan is the strongest observed in the sample to this point: two steps, correctly ordered, no placeholder phrasing and no over-granularity. Decomposition cannot be implicated. The refusal is correct behaviour on a context the system had itself corrupted, which distinguishes it from case 5, where the context simply never contained the answer. Ablation 1 resolved the ambiguity correctly and answered 'Dusty Springfield', the right singer but the wrong question, having been asked for a number; the two systems therefore each got one half of the task right and the other wrong. Note also that the bare name 'Dusty Springfield' returns her article only at rank 5, while the two question-shaped queries return it at rank 1, so the phrasing the system uses elsewhere would have worked well here."
+    },
+    {
+      "n": 13,
+      "question_id": "5a7daad55542995f4f4022b7",
+      "type": "bridge",
+      "question": "What year was the namesake of a small island in the Town of East Hampton born?",
+      "gold_answer": "1599",
+      "system_answer": "The retrieved information does not provide the year of birth for the namesake of a small island in the Town of East Hampton.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Lion Gardiner",
+        "Gardiners Island"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The first 0/2 case in the sample: neither gold article was retrieved by any system across eleven queries. The question names neither the island nor the person, offering only the description 'a small island in the Town of East Hampton', which is almost word for word the opening of the Gardiners Island gold sentence. Despite that near-identity, the descriptive queries fail: sub-query 1 run verbatim returns East Hampton (village), New York at 0.6802 with no island, and adding 'Suffolk County' from the gold sentence degrades the result further by pulling in Staten Island. Articles containing 'East Hampton' dominate anything the description could reach. The query 'Gardiners Island' by contrast returns the article at rank 1 (0.7798), so it is indexed and reachable, but only under a name the system had no way of knowing, this being outcome (ii) under procedure step 4a. The plan is correct for a question that withholds both entities, naming the island, then its namesake, then the birth year, in that order, and every hop asked a sensible question.",
+      "notes": "The chain had two independent breaks, not one. The query 'Lion Gardiner' returns Jarome Iginla, David Miller, Hayley Williams and other unrelated people, with no Gardiner-related result at all, while Lion Gardiner_0 sits at rank 2 for the query 'Gardiners Island' and is therefore indexed. The embedder appears to treat 'Lion Gardiner' as a generic personal name and match it against other personal names, gaining purchase on neither token. So even had hop 1 identified the island and hop 2 extracted the namesake, hop 3 would still have failed. This is the strongest case in the sample for the retrieval-configuration caveat: a sparse or hybrid component would match both 'Gardiners Island' and 'Lion Gardiner' on exact tokens, and dense-only retrieval is precisely what loses them. Contrast with Ablation 1, which latched onto Little Jost Van Dyke from the noise, concluded the namesake was 'Joost van Dyk' and spent hops 3 and 4 on him, issuing the identical query twice; the Main System asked the correct question four times and refused honestly. Baseline B answered 'Seventeenth century' with nothing in its context supporting it."
+    },
+    {
+      "n": 14,
+      "question_id": "5a80be9655429938b61421b5",
+      "type": "bridge",
+      "question": "In addition to Jennifer Tilly, Brian Backer, Sally Kellerman, Nedra Volz, Clara Peller, Wendie Jo Sperber and the actor born on June 22 1958 in Wilmette, Illinois, who else starred in Moving Violations?",
+      "gold_answer": "Fred Willard",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Moving Violations",
+        "John Murray (actor)"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The answer is a single sentence in a single article: Moving Violations_0 lists the full cast including Fred Willard. One retrieval on the unmodified question returns that chunk at rank 1, and all three comparator systems did exactly that and answered correctly, Ablation 1 in a single hop with D3 correctly declaring sufficiency. The Main System instead produced an eight-step plan allocating one sub-query to each named actor, with the only sub-query that could answer the question, 'What is the full cast list of the movie Moving Violations?', placed eighth against a four-hop ceiling, so it was never reachable. The four hops that did run retrieved unrelated biographies, several of them matched on first name alone: 'Who is Brian Backer?' returned Brian Robbins, Brian Orser and Brian Griese, and 'Who is Sally Kellerman?' returned Sally-Ann Spencer and Sally Kohn. The budget was then exhausted and the system refused. Retrieval is exonerated, since the target chunk is rank 1 for the unmodified question and three systems demonstrated this in the actual run. This is case 11's over-granularity in its severest form: a question requiring no decomposition at all was decomposed into eight steps with the answering query placed last.",
+      "notes": "The only case so far in which the Main System is beaten by all three comparators, with the cause lying entirely in its own planning. D1 classified the question as multi-hop, which is questionable given that one retrieval answers it fully; this is the second clear instance, after case 4, of the mirror error to d1_misclassified, namely D1 wrongly asserting that multiple hops are needed. Aggregate measurements taken while investigating this case: across the full evaluation 71 of 744 multi-hop questions (9.5%, or 7.1% of all questions) received plans of five or more steps against a four-hop budget, with the tail reaching ten steps; 135 more received exactly four steps, leaving no hop for the reactive repair path, so 27.7% of multi-hop questions had plans consuming or exceeding the entire budget; and 462 planned sub-queries were generated and never executed. On the 71 over-budget questions the Main System trails Ablation 1 by 5.6 EM points (0.4225 against 0.4789) where the gap on the 673 in-budget questions is 1.6 points, and its advantage over Baseline A narrows from +8.0 to +2.8 EM. This is a same-question comparison across systems and so is not subject to the selection effect that makes the plan-length accuracy breakdown uninformative. The underlying gap is that D2 has no knowledge of MAX_HOPS and can therefore produce plans the retrieval loop cannot execute; both components conform to their specifications individually, and nothing connects them."
+    },
+    {
+      "n": 15,
+      "question_id": "5a82360055429903bc27ba46",
+      "type": "bridge",
+      "question": "This American is best known for his work on such Disney animated films as \"Beauty and the Beast\" and a 1996 American animated musical drama film whose plot centers on who?",
+      "gold_answer": "Quasimodo",
+      "system_answer": "Kirk Wise",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "The Hunchback of Notre Dame (1996 film)"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [
+        "decomposition failure"
+      ],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Hop 1 succeeded, returning Kirk Wise_0, whose gold sentence names The Hunchback of Notre Dame outright. The plan, fixed before that name could be known, referred to the film only as 'the 1996 American animated musical drama film that the American is known for', so sub-queries 2 and 3 and the hop 4 reactive query all searched on a genre description and retrieved genre-matched films of other years: Zootopia, Sing, Shrek, Rudolph. The system ended with Kirk Wise as the only concrete entity in context and answered with him, the bridge entity rather than the endpoint. Decomposition is therefore implicated in the same way as cases 8 and 11, but reachability testing shows it is not sufficient to explain the outcome. The gold sentence's own wording, '1996 American animated musical drama film produced by Walt Disney Feature Animation', returns Disney Renaissance, The Lion King and Disney list pages, with the target article absent, so the descriptive route could not have worked however phrased. The title alone is also insufficient: 'What is the plot of The Hunchback of Notre Dame?' returns Notre Dame High School Toronto, Notre Dame Fighting Irish football and a Stanford rivalry page, the university dominating the phrase throughout the corpus. Only a query carrying both the exact title and '1996 film' retrieves the article, and even then at rank 2 behind The Hunchback of Notre Dame II. Retrieval is therefore primary and decomposition secondary.",
+      "notes": "Second data point for the deferred cross-branch precedence question, and it points the same way as case 2: where a search-side and a thinking-side or planning-side failure co-occur, the search-side failure took primary. Third instance of a distinctive proper noun being lost to a more frequent sense in the corpus, after 'Cyclone' read as weather (case 5) and 'Lion Gardiner' matched against unrelated personal names (case 13); here 'Notre Dame' is captured by the university. Also a second instance of near-duplicate articles outranking the target, after the three near-identical destroyer stubs in case 4. Ablation 1 failed identically and also answered 'Kirk Wise', so no counterfactual rescue is available; Baseline A answered 'The Lion King' and Baseline B 'Kirk Wise'."
+    },
+    {
+      "n": 16,
+      "question_id": "5a8297c055429954d2e2eb71",
+      "type": "bridge",
+      "question": "Who does the previous Vice President of Production at the animation studio that is owned and operated by Viacom, currently work for?",
+      "gold_answer": "Cartoon Network Studios",
+      "system_answer": "The retrieved information does not provide enough details to answer the question.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Brian A. Miller",
+        "Nickelodeon Animation Studio"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Neither gold article was retrieved by any of the four systems; every hop returned Viacom Productions_0 alongside unrelated corporate-communications figures, and all four refused. Reachability testing shows the chain was reachable end to end, but only from the studio name onward. The gold sentence's own wording, 'animation studio owned and operated by Viacom through Nickelodeon', returns Nickelodeon Animation Studio_0 at rank 1 (0.6762), ahead of Viacom Productions_0 at 0.6273. Sub-query 2 asked the same thing minus one token, 'What is the name of the animation studio that is owned and operated by Viacom?', and returned Viacom Productions, Paramount Vantage and P.A.Works with Nickelodeon absent. The single token separating success from failure is 'Nickelodeon', which is precisely the answer sub-query 2 was asking for, so the system could not have supplied it. The second link is likewise reachable once the studio is known: 'Vice President of Production Nickelodeon Animation Studio Cartoon Network' returns Brian A. Miller_0 at rank 3, and his article states the Cartoon Network Studios answer directly. The plan's ordering is defective, asking who the previous VP was before asking what the studio is called, but this is not causal: sub-query 2 fails on its own terms, so reordering changes nothing, and decomposition is not recorded as a secondary.",
+      "notes": "The sharpest illustration in the sample of the bridge problem under dense retrieval. The difference between retrieving and not retrieving the article is one token, that token is the answer to the sub-query being issued, and no planning strategy can close the gap. This is a structural limit on description-based retrieval rather than a defect in decomposition, and the strongest argument yet for a hybrid retriever, since sparse matching on 'Viacom' and 'animation' would plausibly surface the article. Fourth instance of a plain personal name matching other personal names: the query 'Brian A. Miller' returns Jim Miller (punter), Micah Miller and Mitch Miller, with the correct article at rank 2. Ablation 1 stalled completely, issuing the identical query on hops 2, 3 and 4 and returning identical chunks, the third such instance after cases 11 and 13."
+    },
+    {
+      "n": 17,
+      "question_id": "5a878d795542993e715abf9d",
+      "type": "bridge",
+      "question": "What animation company produced the first season of an animated television series co-created by Jorge Aguirre?",
+      "gold_answer": "Goldie & Bear",
+      "system_answer": "The retrieved information does not provide the name of the animation company that produced the first season of the animated television series co-created by Jorge Aguirre.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Goldie &amp; Bear"
+      ],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The question asks for an animation company. The gold answer 'Goldie & Bear' is a television series, as its own article states in its opening sentence: 'Goldie & Bear is an American animated preschool television series which began on September 12, 2015.' The only company named anywhere in the gold evidence is Milk Barn Animation, which the same article identifies as the producer of Season One. The annotation therefore supplies the bridge entity in place of the endpoint. Both gold articles were read in full from chunks.json rather than from the supporting sentences alone, and neither offers a reading on which the series title answers the question. No failure category can be assigned, because the diagnosis depends on which answer is treated as the target and the two give different results. Marked against the gold as given, the string 'Goldie & Bear' was in context from hop 2 within Jorge Aguirre (author)_0, so the system held the answer and refused, which would be a reasoning failure. Marked against the correct answer, 'Milk Barn Animation' appears only in the Goldie & Bear article, which was never retrieved, so the system never searched for a series title it had already learned, which would be a decomposition failure. The indeterminacy is the reason for the unanswerable assignment rather than an argument for either category.",
+      "notes": "Distinct from case 3, where the system's independent error was assessable regardless of which gold was used, and from case 10, where nothing went wrong at all. Reachability testing shows the Goldie & Bear article is readily findable by title: 'Goldie & Bear' returns it at rank 1 (0.7365), as do 'Goldie and Bear Disney Junior series' (0.7842) and 'What animation company produced season one of Goldie & Bear?' (0.7881), and the HTML entity in the indexed title has no effect on matching. Separately, the query 'Milk Barn Animation' returns The Cow, Dammon Round Barn and University of Illinois round barns, the embedder reading the studio name as agricultural buildings; this is the fifth proper-noun collision recorded, after Cyclone as weather, Lion Gardiner, Notre Dame, and personal-name matching in cases 14 and 16. It does not bear on the verdict, since the answer is stated inside the Goldie & Bear chunk and no search for the studio by name was required. Hop 1, 'Who is Jorge Aguirre?', returned Emmanuel Agassi, Jorge Arriagada and other unrelated people, a further instance of the same personal-name weakness."
+    },
+    {
+      "n": 18,
+      "question_id": "5a89a128554299669944a552",
+      "type": "bridge",
+      "question": "Den Dover was born in a suburb with what total resident population?",
+      "gold_answer": "6,396",
+      "system_answer": "25,779 people",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Stockton Heath"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [
+        "retrieval failure",
+        "classification failure"
+      ],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": true,
+        "second_valid_answer": false
+      },
+      "rationale": "D1 classified the question as single-hop, so one retrieval ran on the original question and returned Den Dover_0 alongside four Dover-named distractors. Den Dover_0 names Stockton Heath as his birthplace but gives no population, and the Stockton Heath article, which states the figure of 6,396, was never sought. The system answered '25,779 people'. That number was in context: it appears in Dover Area School District_0, which reports the 2010 census population of a rural school district in York County, Pennsylvania. A corpus-wide search confirms the string occurs in exactly one chunk of 91,350, and that chunk was retrieved, so the answer is grounded in retrieved text and is a reasoning failure rather than a grounding failure under the test in meta. The error is precise in form: the system matched on the shape of the required answer, a population figure, and disregarded that the figure belonged to a different place with a similar name. Retrieval is recorded as secondary because the required article was absent, but its absence follows from the D1 routing decision rather than from any retrieval attempt failing.",
+      "notes": "Second instance of d1_misclassified after case 6: the answer cannot be derived from Den Dover_0 alone, since that article names the suburb without giving its population, so routing to a single hop was wrong on the merits. The comparison with Ablation 1 is the most significant observation here. It also classified the question as single-hop, retrieved the identical five chunks, and refused. On identical context and identical information one system declined and the Main System produced a figure belonging to another article. Across the preceding seventeen cases the Main System had not once produced an ungrounded or misattributed answer where a comparator refused, and the record of correct refusals at cases 5, 12, 13, 14 and 16 had been accumulating as a positive finding about D5; this is the first counter-example and qualifies that finding. Baseline B also answered '25,779 people'; Baseline A refused. ADDED at case 21, when classification failure was introduced as a seventh category: this case meets its definition, since reachability testing returns Stockton Heath_0 at 0.7123 for 'What is the total resident population of Stockton Heath?', a query constructible from Den Dover_0 which names the suburb, and at 0.8325 with 'Cheshire' added. A second hop would therefore have recovered the evidence. It is recorded as secondary rather than primary because Ablation 1 held the identical single-hop context and refused, so the routing error did not compel the misattributed figure; that remains a separate failure at synthesis. Note also that the bare query 'Stockton Heath' returns Harrison Barnes, Norm Nixon and other basketball players, a sixth proper-noun collision."
+    },
+    {
+      "n": 19,
+      "question_id": "5a89cc99554299669944a5ae",
+      "type": "bridge",
+      "question": "Wiener Werkstätte Style was part of the movement that took place during what eras?",
+      "gold_answer": "late 19th and early 20th centuries",
+      "system_answer": "1903, Modernist movement",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Modernism"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The question asks when the movement took place, but all three sub-queries ask about the Wiener Werkstätte Style itself: what it is, during which eras it emerged, and what years are associated with its emergence. The decomposition substituted the Style for the movement, so no sub-query could reach Modernism, the target having been redefined at planning time. Sub-queries 2 and 3 are also near-duplicates, so in effect one question was asked across all four hops, each returning Wiener Werkstätte Style_0 again. The answer '1903, Modernist movement' is grounded in that chunk, whose opening sentence reads 'With the foundation of the Wiener Werkstätte in 1903, a new artistic style was born', and which also names the Modernist movement; the system reported the founding year of the workshop in place of the era of the movement. Retrieval is exonerated by reachability testing: Modernism_0 is returned at rank 1 for 'Modernism' (0.7891), for 'Modernism philosophical movement Western society' (0.7563), and for 'When did the Modernist movement take place?' (0.6841), the last being almost the wording of the original question. Reasoning is not primary either, since on four hops of nothing but the Style article the answer given is a defensible reading of what was available.",
+      "notes": "Distinct from the decomposition failures at cases 8, 11 and 15, where the plan referred to the bridge entity by a description it could not resolve. Here the plan dropped the bridge entirely and asked about the wrong subject, so the failure is in what the plan chose to ask rather than in how it phrased it. This case is one of eight in the sample also scored by the LLM judge, and the only one of the eight where judge and EM/F1 agree the answer is deficient: faithfulness 3, relevance 3, coherence 4, against 5/5/5 on five of the other seven. The reduced faithfulness reflects that '1903' is present in the evidence but does not support an answer to the question asked. Ablation 1 failed identically, its four queries all circling the Style, and all four systems returned the same answer."
+    },
+    {
+      "n": 20,
+      "question_id": "5a89d2d75542992e4fca83d2",
+      "type": "bridge",
+      "question": "What country of origin does Shawnee Trail and Great Indian Warpath have in common?",
+      "gold_answer": "American",
+      "system_answer": "United States",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles were read in full, three chunks in total. The only country named anywhere in them is 'USA', in the Shawnee Trail article; the Great Indian Warpath article names no country at all, referring to eastern North America, New York, Alabama and various tribes. The word 'American' occurs twice, in 'an American Indian trail' and in 'Native Americans', and in both cases denotes indigenous peoples rather than a nation state. The annotation has therefore extracted 'American' from a compound in which it means something other than a country, the same class of error as case 17 and case 3. The question asks what country, and 'United States' is the correct answer to that question as well as the noun form of what the annotation gestures at. All four systems gave it. F1 is zero only because the two strings share no tokens.",
+      "notes": "No indeterminacy of the kind seen at case 17: the system's answer is correct on either reading of the gold, so no secondary category applies and nothing the system did is at fault. Worth recording positively that D1 classified this question as single-hop and was right to: one retrieval returned both gold articles, along with a second chunk of the Great Indian Warpath. This is the only correct D1 = NO call among the three such cases in the sample so far, against cases 6 and 18 where the classification was wrong on the merits, and it is noted here because the d1_misclassified attribute records only the errors and would otherwise imply the classifier never makes a correct single-hop call."
+    },
+    {
+      "n": 21,
+      "question_id": "5a8a416955429930ff3c0d2b",
+      "type": "bridge",
+      "question": "What did Eric Radomski produce that premiered on Disney XD on May 26, 2013?",
+      "gold_answer": "Avengers Assemble",
+      "system_answer": "Not enough information.",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Avengers Assemble (TV series)"
+      ],
+      "primary": "classification failure",
+      "secondary": [
+        "retrieval failure"
+      ],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": true,
+        "second_valid_answer": false
+      },
+      "rationale": "The first case assigned to the seventh category, and it meets all three conditions. The Eric Radomski article is a single chunk and was retrieved on the only hop; it lists seven shows he produced, including Avengers Assemble, but gives no premiere dates, so the answer cannot be derived from it alone. The Avengers Assemble article, which supplies the Disney XD premiere date of 26 May 2013, was never retrieved. Reachability testing shows a second hop would have recovered it: 'Avengers Assemble TV series' returns the article at 0.852 and 'Avengers Assemble premiered Disney XD May 26 2013' at 0.8178, and the title was in context from hop 1, so either query was constructible. By contrast a query built only from the original question, 'What premiered on Disney XD on May 26, 2013?', returns Penn Zero, Storm Hawks and Toon Disney, reproducing the distractors of the actual run, so the escape route required naming a candidate rather than restating the question. D1 classified the question as single-hop and the loop stopped before any of that could happen. Retrieval failure is recorded as secondary because the discriminating article was indeed absent from context, but its absence follows from the routing decision rather than from any retrieval attempt failing.",
+      "notes": "Structurally the same as cases 2 and 6, in that the system held a candidate set with no retrieved basis for discriminating within it, and D5 forbids resolving such a set from parametric knowledge. Here the set was seven show titles and the system refused rather than guessing, which on a one-in-seven choice is the correct behaviour. This is the sixth correct refusal in the sample against one incorrect answer under similar conditions at case 18."
+    },
+    {
+      "n": 22,
+      "question_id": "5a8aff3d55429971feec45df",
+      "type": "bridge",
+      "question": "Which American-Canadian actor starred in the Disney Channel's \"Good Luck Charlie, It's Christmas!\"?",
+      "gold_answer": "Eric Allan Kramer",
+      "system_answer": "Bridgit Mendler",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles were retrieved on the single hop. Good Luck Charlie, It's Christmas!_0 gives the cast list naming Bridgit Mendler, Leigh-Allyn Baker, Bradley Steven Perry, Mia Talerico, Eric Allan Kramer and Jason Dolley, and Eric Allan Kramer_0 states that he is an American-Canadian character actor. The question supplies one discriminating criterion, American-Canadian, and exactly one retrieved article applies that phrase to exactly one of the six named cast members. The join required is a single match between an adjective and a name, and both halves were in the same context window. The system answered with the first name in the cast list. Retrieval, classification and planning are all exonerated: coverage was complete on one hop, D1's single-hop call was correct, and D2 never ran.",
+      "notes": "Starker than case 7, where the comparable failure at least required comparing two dates; here it requires only matching a stated attribute to a name. All four systems answered 'Bridgit Mendler'. This is the third case in which every configuration returned the first-named entity available, after case 7 (Javier Frana, first person named in the question) and case 9, and the positional pattern is consistent enough to warrant a sentence in the write-up, since it implicates the generator rather than any part of the agentic design. Second correct D1 = NO call in the sample after case 20, against incorrect calls at cases 6 and 18."
+    },
+    {
+      "n": 23,
+      "question_id": "5a8bd49d5542997f31a41dd7",
+      "type": "bridge",
+      "question": "Who is this American cartoonist, writer, producer, animator, and voice actor that worked with this multiple Shuster Award, Harvey Award and Eisner Award nominee and an Eisner Award-winning comic book creator?",
+      "gold_answer": "Matt Groening",
+      "system_answer": "Will Eisner",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Ian Boothby",
+        "Matt Groening"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Neither gold article was retrieved, and reachability testing shows neither was reachable by any query the system could construct. Querying by exact article title fails in both cases: 'Matt Groening' returns Brian Griese, Chris Grocock, Mike Groff and Jonathan Groff, and 'Ian Boothby' returns Start-rite, Ian Ormondroyd and Ian Darke, both matching on surname or forename shape rather than on the entity. The best available description also fails: 'American cartoonist, writer, producer, animator, and voice actor' is near-verbatim from Groening's opening sentence and returns Warner Bros. Cartoons, Bill Melendez and Steve Coogan, reproducing what hop 3 obtained in the actual run. The only query that succeeds requires the titles 'Simpsons Comics', 'Futurama Comics' and 'Bongo Comics', which appear solely in the Boothby article that was never retrieved. Decomposition was considered and rejected as a cause: the reactive queries at hops 2 and 3 split the question correctly into the comic book creator and the American cartoonist, so the decomposition the plan failed to supply was supplied in flight, and it still missed.",
+      "notes": "D2 returned a single sub-query character-identical to the original question, which is the fallback path in decompose() firing after three failed attempts to produce at least two valid sub-questions. This is designed behaviour rather than a defect: the proposal's risk table specifies validation with up to three retries and graceful degradation on failure, and that is what occurred. One minor implementation gap is visible in the retry loop, however: the has_bad branch appends corrective feedback describing what was wrong, while the len < 2 branch re-sends the identical prompt, so that retry is unguided rather than corrective. The docstring justifies the need for prompt modification on the grounds that temperature 0 reproduces identical output, but section 3.9 of the dissertation measures 80 of 156 decompositions differing across two runs at temperature 0, so the two statements contradict each other and should be reconciled. Measured across the run: the fallback fired on 4 of 744 multi-hop questions (0.54%), all four scoring EM = 0 against a multi-hop average of 0.4328, and all four questions withhold entity names, which conflicts directly with D2's rule that sub-questions name specific entities. Separately, 'Eisner Award' appears twice in the question and pulled Will Eisner_0 and Will Eisner_1 into every hop; all four systems answered 'Will Eisner'. This is the first proper-noun collision in the sample where the colliding term originates in the question rather than in retrieved text, and the eighth such collision overall. It is also the strongest case for hybrid retrieval, since sparse matching on the token 'Groening' would return the article immediately."
+    },
+    {
+      "n": 24,
+      "question_id": "5a8c92dd554299653c1aa0c4",
+      "type": "comparison",
+      "question": "Did Big Pig or Blur have more members?",
+      "gold_answer": "Big Pig",
+      "system_answer": "Blur",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles were retrieved and both line-ups were in context from hop 2 onward. Big Pig_0 names seven members of an early line-up (Sherine, Tony Antonaides, Neil Baker, Nick Disbray, Tim Rosewarne, Adrian Scaglione and Oleh Witer) and Blur (band)_0 names four (Damon Albarn, Graham Coxon, Alex James and Dave Rowntree). Neither article states a count, so the comparison requires counting names in two lists held in the same context window. The system answered Blur. The plan is among the better ones in the sample, correctly structured for a comparison as identify each band then count each band's members, and retrieval delivered on hops 1, 2 and 3, with hop 4 drifting but still returning Blur (band)_0 at rank 4. Retrieval, classification and decomposition are therefore all exonerated and the failure lies entirely at synthesis.",
+      "notes": "Fourth case in which the answer required a small derivation over evidence already in context, after case 7 (comparing two birth dates), case 9 (comparing two longitudes) and case 22 (matching a stated attribute to a name in a cast list). The system failed all four, and counting seven names against four is the least demanding of them. Useful contrast with Ablation 1, which never retrieved the Blur article, stalled on hops 3 and 4 with identical queries, and refused; the decomposition here genuinely worked and placed both articles in context, so the Main System's failure is not attributable to any part of the retrieval pipeline. Baseline A also refused, having retrieved only Big Pig_0; Baseline B answered Blur."
+    },
+    {
+      "n": 25,
+      "question_id": "5a8f186055429918e830d186",
+      "type": "bridge",
+      "question": "What is one of the most successful retro-clones that is no longer supported by Wizards of the Coast?",
+      "gold_answer": "Old School Reference and Index Compilation",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "OSRIC"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The OSRIC article was never retrieved by any system, and the system had no route to it. The retrieved category article, Dungeons &amp; Dragons retro-clones_0, was read in full: it defines what retro-clones are and discusses the Open Game License, but names no individual retro-clone, so OSRIC was never available as a term the system could have queried. Decomposition is therefore exonerated, as is the plan, which correctly moved from defining the category to naming an instance, with hop 3 issuing the original question verbatim. Reachability testing produced the weakest results recorded in the sample. The exact article title 'OSRIC' returns OSRIC_0 at only 0.6711, barely above Ostap Steckiw and Ozzie Canseco. The gold answer spelled out in full, 'Old School Reference and Index Compilation', fails entirely, returning Index Magazine, Old Palace (York) and lists of chess books. The phrase 'most successful retro-clone', which appears word for word in both the question and the gold supporting sentence, returns Clones of Clones, a Volvo platform and Retro Gamer. The refusal is correct given a context containing only the category definition.",
+      "notes": "Ninth proper-noun collision, and distinctive in kind: OSRIC is a short acronym rather than a personal or place name, and appears to carry very little signal for the embedder, which is a different failure mode from the surname matches at cases 13, 14, 16 and 23. Sixth correct refusal in the sample against one incorrect answer under comparable conditions at case 18. A separate defect is visible in Ablation 1's hop 3 query, which reads 'NO / Present: None / Missing: Name of a successful retro-clone no longer supported by Wizards of the Coast.' — D3's entire raw response was passed to the retriever as the query rather than only the text following MISSING:. The Main System's hop 4 reactive query is clean, so the extraction succeeded there, but the code path is shared and evidently fails on some response formats. This belongs with the decomposer retry-branch asymmetry from case 23 in the project's defect list."
+    },
+    {
+      "n": 26,
+      "question_id": "5a8fb0be5542997ba9cb32ed",
+      "type": "bridge",
+      "question": "What was the previous name of the hotel Bill Cosby recorded his comedy album, For Adults Only, in?",
+      "gold_answer": "the Las Vegas Hilton",
+      "system_answer": "International Hotel",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Westgate Las Vegas Resort &amp; Casino"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": true
+      },
+      "rationale": "Hop 1 retrieved For Adults Only_0, which states that the album 'was recorded at the Westgate Las Vegas Resort & Casino, then known as the International Hotel'. That single chunk therefore gave both the hotel's current name and the name it bore at the time of recording, and D3 declared sufficiency on it, exiting the loop and skipping sub-queries 2 and 3. The question asks for the previous name, and the Westgate article supplies the sequence International Hotel (1969), then the Las Vegas Hilton, then briefly the LVH. The system answered 'International Hotel', which is grounded in the chunk it held and is a reasoning failure rather than a grounding failure under the test in meta. The premature stop was causal here, unlike at case 1: reachability testing returns Westgate Las Vegas Resort &amp; Casino_0 at 0.8446 for 'Westgate Las Vegas Resort and Casino previous names', a query sub-query 3 would have produced once hop 1 revealed the hotel's name, so continuing the loop would have retrieved the missing article.",
+      "notes": "Second instance of stopped_early after case 1, and the first in which the premature stop demonstrably cost the answer. The gold is not treated as defective: 'the Las Vegas Hilton' is supported by the evidence and is genuinely a previous name, so this is not the case 17 situation where the answer named the wrong type of entity. It is however a question admitting more than one defensible answer, since 'International Hotel' is also a previous name of the same hotel, is stated in the retrieved evidence, and is the name the hotel bore when the recording was made. All four systems answered 'International Hotel'. This is the second occurrence of the second-valid-answer pattern first raised at case 1."
+    },
+    {
+      "n": 27,
+      "question_id": "5a902d5155429933b8a2048d",
+      "type": "bridge",
+      "question": "Where is a television transmitter located in Topeka, KS?",
+      "gold_answer": "on Windy Hill Road in Maple Hill",
+      "system_answer": "Between the Kansas River and I-70/US 40/US 75/KS 4 in Topeka.",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "1/2",
+      "missed_articles": [
+        "WIBW-DT2"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": true
+      },
+      "rationale": "Both candidate answers were in the same context window on the single hop. WIBW-TV_0 contains the gold answer verbatim, stating that its transmitter is located on Windy Hill Road in Maple Hill, and KTMJ-CD_0 states that KTMJ-CD maintains transmitter facilities located between the Kansas River and I-70/US 40/US 75/KS 4 in Topeka. The system reproduced the second of these word for word, so the failure is one of selection between two retrieved candidates rather than of retrieval, planning or grounding. The selection is defensible on the question's literal wording: the question asks where a television transmitter is located in Topeka, KTMJ-CD's transmitter is in Topeka, and WIBW-TV's transmitter is in Maple Hill, a different town, with only its studios in Topeka. Against the gold the selection is wrong, and the case is recorded as a reasoning failure on that basis, but the second_valid_answer attribute records that the answer given satisfies the question as asked.",
+      "notes": "Third and strongest instance of the second-valid-answer pattern, after cases 1 and 26, and the reason the attribute was introduced here rather than deferred to case 50. Stronger than the earlier two because the system's answer arguably fits the question better than the gold does, rather than merely as well. Not treated as defective gold: 'on Windy Hill Road in Maple Hill' is supported by two gold sentences and is a genuine transmitter location for a Topeka-licensed station, so the gold is correct but not uniquely correct, and the imprecision lies in the question. D1 classified the question as single-hop and was right to: the single retrieval returned the gold answer in WIBW-TV_0 at rank 5. All four systems gave the same answer."
+    },
+    {
+      "n": 28,
+      "question_id": "5ab64cfa55429953192ad2b7",
+      "type": "comparison",
+      "question": "Who lived longer Ellen Glasgow or N. Scott Momaday ?",
+      "gold_answer": "N. Scott Momaday",
+      "system_answer": "Ellen Glasgow",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "N. Scott Momaday"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The plan was correct for a comparison question, requesting birth and death dates for each subject in turn. Hops 1 and 2 retrieved Ellen Glasgow_0. Hops 3 and 4 asked precisely for Momaday's birth and death dates and returned John Scott (ice hockey), Scott Kelly (astronaut), John Walter Scott, Ned Scott and Scott Gregory, the surname Scott swamping the query. Reachability testing shows the article is unreachable by anything the system could construct. The exact title 'N. Scott Momaday' fails, returning the same cluster of Scotts. The distinctive surname alone, 'Momaday', fails worse, returning Edwin (musician), The Mommies and Trading Mom, having matched on phonetic similarity to 'mommy'. A pure description, 'Kiowa novelist and poet born 1934', fails entirely. Only 'Navarre Scott Momaday Kiowa novelist' succeeds, at 0.6868, and it requires both his full given name and his tribal affiliation, neither of which appears anywhere outside the article that was never retrieved. Decomposition is therefore exonerated: the queries issued were the right queries.",
+      "notes": "Tenth proper-noun collision, and the second after OSRIC at case 25 in which a rare token carries almost no signal rather than colliding with a more frequent sense; here the rare surname performs worse in isolation than the full title does. Separately, the system answered 'Ellen Glasgow' while holding only her dates and nothing whatever about Momaday, so a comparison question with one side entirely absent from context received a definite answer rather than a refusal. This is the second D5 lapse in the sample after case 18, and milder than that one, since the answer at least names one of the two people the question offers rather than reporting a figure belonging to an unrelated entity. The record of correct refusals at cases 5, 13, 14, 16, 21 and 25 now carries two exceptions, and both should be reported alongside it. All four systems answered 'Ellen Glasgow'. The plan's four sub-queries also consumed the entire hop budget, leaving no reactive repair, though with hops 3 and 4 both failing on Momaday a spare hop would very likely have failed too."
+    },
+    {
+      "n": 29,
+      "question_id": "5ab6b13b554299710c8d1f3f",
+      "type": "bridge",
+      "question": "The Roissy Airport connects to Paris and cities in what countries?",
+      "gold_answer": "in France, as well as to Belgium",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Aéroport Charles de Gaulle 2 TGV"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "All four sub-queries refer to the airport by its informal name, Roissy, and reachability testing shows this is what cost the answer. Holding the phrasing constant and changing only the name is decisive: 'What countries are served by Roissy Airport?' returns airline destination lists with no TGV article, while 'What countries are served by Charles de Gaulle Airport?' returns Aeroport Charles de Gaulle 2 TGV_0 at rank 3 (0.646). The same holds for the other verb, with 'countries connected to Roissy Airport' failing and 'countries connected to Charles de Gaulle Airport' succeeding at 0.675. The informal name embeds toward Roissy-en-France, the commune, rather than toward the airport's own article. The plan anticipated this, asking in sub-query 1 for the official name of Roissy Airport, but hop 1 retrieved no Charles de Gaulle article at all, and although hop 2 did return Charles de Gaulle Airport_0 and _1, making the official name available, the plan was fixed in advance and hops 3 and 4 continued to say Roissy. The counterfactual is demonstrated in the run itself: Ablation 1, identical but for the absence of decomposition, switched to the official name at hop 2, retrieved the TGV article immediately, and answered 'France, Belgium'. Baseline B did likewise.",
+      "notes": "A cleaner illustration than case 8 of what upfront planning costs, because the planner recognised the dependency: sub-query 1 exists precisely to resolve the informal name into the official one. Recognising the dependency was not enough, since the design provides no mechanism to spend the answer once a hop returns it. The refusal is correct: Charles de Gaulle Airport_0 and _1 do not state the France and Belgium connection, and Baseline A refused on exactly that context. Third correct refusal recorded after the two lapses at cases 18 and 28."
+    },
+    {
+      "n": 30,
+      "question_id": "5ab729335542993667793f5a",
+      "type": "bridge",
+      "question": "What kind of musician does Robert Plant discography and John Bonham have in common?",
+      "gold_answer": "drummer",
+      "system_answer": "Rock musicians",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Robert Plant discography"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": true
+      },
+      "rationale": "The Robert Plant discography article was never retrieved and is not reachable by anything the system could construct. Its exact title, 'Robert Plant discography', fails, returning Band of Joy, Michael Proctor (botanist) and William L. Bray, with the article absent. The plan's own sub-query 2, 'What is the discography of Robert Plant?', failed in the run for the same reason, returning Robert Parkes, Robert Cantley, Huernia (a genus of succulents) and Michael Proctor. Only queries built from the target's own contents succeed, and then weakly: 'Robert Plant solo albums and tours discography' returns Robert Plant discography_2 at 0.5323 and 'Robert Plant tours 1983 Phil Collins' at 0.5106, both requiring details available only inside the article being sought, and both reaching chunk 2 rather than chunk 0. Decomposition is exonerated, since sub-query 2 asked exactly the right thing.",
+      "notes": "Eleventh proper-noun collision and a new variant: hop 1's 'Who is Robert Plant?' retrieved him correctly, but adding 'discography' tipped the query into botany, so surrounding words shifted a name into a different sense rather than the name colliding on its own. Fourth second_valid_answer case after 1, 26 and 27, and distinct from those three: there both answers were genuinely available in context, whereas here the system's answer is arguably more correct than the gold. Robert Plant is a singer, not a drummer, and the gold's 'drummer' holds only if 'Robert Plant discography' is read as an article title in which Phil Collins happens to be mentioned, which is a lexical coincidence rather than a fact about Plant. Given a singer and a drummer, 'Rock musicians' answers the question as a reader would understand it. Baseline A and Ablation 1 scored EM = 1 with 'Drummer', but Baseline A never retrieved the discography article either: its context held John Bonham plus four Bonham relatives, and 'drummer' was the only musician-type available to it, so it scored correctly without performing the comparison the question asks for. This mirrors case 9, where a correct score likewise followed from holding less evidence rather than more."
+    },
+    {
+      "n": 31,
+      "question_id": "5ab797af5542995dae37e96c",
+      "type": "bridge",
+      "question": "In what year was Shin Hyun-joon in the successful South Korean comey sequel?",
+      "gold_answer": "2005",
+      "system_answer": "The retrieved information does not provide the year when Shin Hyun-joon was in the successful South Korean comedy sequel.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Shin Hyun-joon (actor)",
+        "Marrying the Mafia II"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Neither gold article was retrieved by any system and the chain was broken at both links, though for different reasons. The actor is unreachable: 'Shin Hyun-joon' returns Kim Hyun-joong at 0.6817, ranked above any article about the person sought, and adding 'South Korean actor' worsens it, raising Kim Hyun-joong to 0.7491 ahead of four further Korean actors, with the target article never appearing. The film, by contrast, was reachable by a query the system could have constructed: 'most successful comedy film in South Korea 2005 sequel' returns Marrying the Mafia II_0 at rank 2 (0.5516), and every term in that query comes from the question itself plus ordinary phrasing, requiring no knowledge of the title. The system never issued such a query because all four of its hops anchored on the actor's name, which was poisoning every retrieval. The plan is nonetheless not treated as at fault: identifying the person before the film is the correct order for a bridge question, and nothing available in advance signalled that the name would fail.",
+      "notes": "Twelfth proper-noun collision and a distinct kind, warranting separate treatment in the write-up. Romanised Korean names share syllables so pervasively under this tokenisation that near-every Korean name is a partial match for every other: hops returned Kim Hyun-joong, Go Joon-hee, Park Hyung-sik, Kim Hyung-jun, Choi Tae-joon and Jang Joon-hwan throughout. Unlike the surname and phonetic collisions recorded earlier, this is a systematic disadvantage affecting an entire class of entities rather than an individual unlucky string. Also instructive as a near miss: the film sat two ranks from retrieval by a question-derived query, so a plan that pursued the film independently rather than serially after the actor might have completed the chain from the other end. That is a future-work observation about hedging across entry points, not a defect in this plan. All four systems refused."
+    },
+    {
+      "n": 32,
+      "question_id": "5ab8ca5d5542991b5579f005",
+      "type": "bridge",
+      "question": "What club does the footballer who surpassed David Beckham for the appearance record play for?",
+      "gold_answer": "Premier League club Everton",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Coverage reads 2/2 at article level but the answer was never in context, which is the situation procedure step 2 anticipates. The gold sentence naming Everton is in Wayne Rooney_0, and the system retrieved only Wayne Rooney_1, a mid-article fragment beginning 'Michael Carrick, he is the only English player to win the Premier League...' which does not name Rooney at all. The bridge entity was nonetheless available from hop 1: David Beckham_0 states that he held the appearance record 'until 2016 when Wayne Rooney surpassed his total', answering sub-query 1 exactly. The system never placed that name in any subsequent query. Sub-query 2 described the target as 'the footballer who surpassed David Beckham for the appearance record', and that description embeds back toward Beckham, so hops 2, 3 and 4 returned the David Beckham Academy, David Beckham's Soccer USA and Cruz Beckham. Ablation 1, identical but for the absence of decomposition, queried 'Wayne Rooney current club information' at hop 2, retrieved Wayne Rooney_0 and answered Everton; Baseline B did likewise. The refusal is correct given a context that never contained the Everton fact.",
+      "notes": "Fifth instance of the plan describing a bridge entity rather than naming it, after cases 8, 11, 15 and 29, and the first in which the reactive path also failed to repair it. Hops 3 and 4 were generated from D3's MISSING line, so D3 correctly identified that the footballer's club was absent, yet both reactive queries still said 'the footballer who surpassed David Beckham' rather than 'Wayne Rooney'. The repair mechanism reproduced the defect it exists to correct. This case was flagged during the initial survey as the sole refusal in the sample accompanied by full evidence retrieval, and therefore as a possible instance of D5 being over-conservative; the chunk-level detail withdraws that reading. The sample now contains no instance of over-conservative refusal, against two instances of the opposite at cases 18 and 28."
+    },
+    {
+      "n": 33,
+      "question_id": "5ab9df1f554299232ef4a239",
+      "type": "bridge",
+      "question": "Jasmin Geljo is known for his role in a 2005 post-apocalyptic horror film written and directed by who?",
+      "gold_answer": "George A. Romero",
+      "system_answer": "The retrieved information does not provide the name of the writer and director of the 2005 post-apocalyptic horror film associated with Jasmin Geljo.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Land of the Dead"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Jasmin Geljo_0 was retrieved on hop 1 and remained in context throughout, and it names three films including Land of the Dead. The target article is reachable by its title: 'Land of the Dead' returns Land of the Dead_0 at rank 1 (0.6105), as do 'Land of the Dead 2005 film' (0.6644) and 'Who wrote and directed Land of the Dead?' (0.6611), the last being precisely what sub-query 2 should have become. The system nonetheless issued no query naming any candidate, describing the film in all four hops as 'the 2005 post-apocalyptic horror film featuring Jasmin Geljo'. The candidate ambiguity is weak mitigation: three titles faced three remaining hops, so querying each was affordable, and each film's own article states its year and genre, so the system did not need to know in advance which was post-apocalyptic horror, only to look.",
+      "notes": "Sixth instance of the plan describing a bridge entity rather than naming it, after cases 8, 11, 15, 29 and 32, and the second after case 32 in which the reactive path reproduced the same defect, hops 3 and 4 being generated from D3's MISSING line and still describing rather than naming. Worth contrasting with case 2, which looks similar on the surface: there a five-title candidate list faced a single remaining hop and no system ever retrieved the target article under any query, making it a retrieval failure, whereas here the target sits at rank 1 for its own title with three hops available. The reachability test at procedure step 4a is what separates the two, and this pair is a good illustration of why that step was added. The refusal is correct given the context actually held."
+    },
+    {
+      "n": 34,
+      "question_id": "5abda6b255429965af743d9a",
+      "type": "bridge",
+      "question": "Peter Jackson is Emeritus Professor of Medieval History at a public research university founded in 1949 as what?",
+      "gold_answer": "the University College of North Staffordshire",
+      "system_answer": "Keele University",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Keele University"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both decomposition defects catalogued elsewhere in the sample appear together here. The plan runs to five sub-queries against a four-hop budget, and the only one capable of producing the answer, 'What was the original name or designation of the university founded in 1949?', is fifth and never ran; this is the over-granularity of cases 11 and 14, and it is hard to defend, since three of the five hops are spent on the subject's identity, his title and the institution type, none of which the question asks about and all of which a single chunk supplies. Separately, no sub-query ever names Keele, although Peter Jackson (historian)_0 was retrieved on hops 1, 2 and 3 and names it; sub-query 4 is not merely descriptive but entirely context-free, asking 'In what year was the university founded?' without naming any university, and it duly returned Ovidius University, Johns Hopkins, Duke and the National Autonomous University of Leon. The system answered 'Keele University', the bridge entity rather than the endpoint, as at cases 8 and 15. Reachability needs no separate test: Ablation 1 read the name from hop 1, queried 'founding purpose of Keele University in 1949' at hop 2, retrieved Keele University_0 and answered correctly, with D3 stopping it there; Baseline B did likewise.",
+      "notes": "Seventh instance of the plan describing rather than naming a bridge entity in context, and the third case after 11 and 14 in which plan length exceeded the hop budget, the two defects compounding here. F1 is 0.286 on the shared token 'University', so the case falls just inside the F1 < 0.3 failure criterion; a marginally higher score would have excluded it from the population altogether."
+    },
+    {
+      "n": 35,
+      "question_id": "5abe0e4e55429976d4830a62",
+      "type": "bridge",
+      "question": "Tim O'Kelly was cast in a film because he resembled a killer nicknamed what?",
+      "gold_answer": "Texas Tower Sniper",
+      "system_answer": "Charles Whitman",
+      "hops": 2,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Charles Whitman"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "D3 declared sufficiency after hop 2, leaving sub-query 3, which asked for the killer's nickname and was therefore the only step capable of answering the question, unexecuted. The system answered 'Charles Whitman', the killer's name rather than his nickname, taken from Tim O'Kelly_0. Reachability testing shows the premature stop cost nothing, however, because the Charles Whitman article was unreachable by anything the system could construct. Sub-query 3 run verbatim returns Tim O'Kelly_0, Cincinnati Kelly's Killers and Machine Gun Kelly, with no Whitman. Naming him directly also fails: 'Charles Whitman' returns 291 (magazine), Charles North (poet), John Cooper Clarke and Walt Whitman Park, and 'What was Charles Whitman known as?' fails identically. The only successful query, 'Charles Whitman nickname Texas Tower Sniper' at 0.7282, contains the gold answer itself and so presupposes what was being sought. This is the situation of cases 5 and 13, where the article is reachable only through a term the system had no means of possessing.",
+      "notes": "Third instance of stopped_early, after cases 1 and 26, and the second of the three in which the premature stop was not causal. Only case 26's actually cost the answer. The attribute is recorded true regardless, following the precedent set at case 1, because it records that D3 declared sufficiency with a gold article unretrieved and a planned sub-query unexecuted; keeping non-causal instances visible gives a more informative picture of D3's calibration than a bare count of harmful stops would. Thirteenth proper-noun collision, and distinct in kind: forename and surname collide independently, 'Charles' pulling toward Charles North and 'Whitman' toward Walt Whitman, so both halves of the name are captured by more frequent figures. The reachability test overturned a provisional call for the third time in the sample, after cases 11 and 15. All four systems answered 'Charles Whitman'."
+    },
+    {
+      "n": 36,
+      "question_id": "5ac131575542994d76dccdb6",
+      "type": "bridge",
+      "question": "Who was the recipient of a prize also given to a player for Chinese club Tianjin Quanjian?",
+      "gold_answer": "Rivaldo of Milan",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "0/2",
+      "missed_articles": [
+        "Bidone d'oro",
+        "Alexandre Pato"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "A three-link chain: the Tianjin Quanjian player is Alexandre Pato, Pato received the final Bidone d'Oro, and that prize was first awarded to Rivaldo. Neither gold article was retrieved by any system, and reachability testing locates the break at the first link. Both articles are highly reachable by name, 'Alexandre Pato' returning his article at 0.8707 and \"Bidone d'oro\" returning its own at 0.678, rising to 0.6969 with a descriptive expansion. But naming Pato is precisely what the system had to discover: the descriptive query 'Brazilian footballer who plays for Tianjin Quanjian', built from the question's own words and equivalent to what sub-query 1 was reaching for, returns the club pages together with Fabio Cannavaro, Axel Witsel and Nico Pandiani, and not Pato. With the first link unmade, the two later links were unreachable in practice despite being trivially reachable in principle. The plan was correct for the structure, naming the player, then the prize, then the other recipient, and the description-versus-name problem here is not a decomposition defect, since unlike cases 32, 33 and 34 the name was never in context to be used.",
+      "notes": "The clearest illustration in the sample of how bridge chains fail under dense retrieval: every link is easy once named, and the chain is impossible because naming is exactly what each link must produce. Cases 16 and 31 show the same shape across two links; this one shows it across three. Fourteenth collision recorded, and the first on a common noun rather than a proper one: 'prize' pulled International Prize for Biology, Brian Josephson, Robert Hormats and a Shinee awards list into hops 2 through 4, with nothing footballing among them. That the pattern extends beyond names is worth noting in the write-up. Three of the four systems refused; Baseline A answered 'Zhang Lu', the only player name available in its context."
+    },
+    {
+      "n": 37,
+      "question_id": "5ac24a035542992f1f2b3832",
+      "type": "bridge",
+      "question": "Joan Baez's hit recording from Quad Studios Nashville originally featured lead vocals from what member of The Band?",
+      "gold_answer": "Levon Helm",
+      "system_answer": "The retrieved information does not provide the name of the member of The Band who featured in Joan Baez's hit recording.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "The Night They Drove Old Dixie Down"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The clearest instance in the sample of the plan answering its own first question and then failing to use the answer. Sub-query 1 asked for the title of Joan Baez's hit recording from Quad Studios Nashville, and hop 1 returned both Quad Studios Nashville_0 and _1, each naming 'The Night They Drove Old Dixie Down'. The title therefore sat in context for three further hops and was never queried. Sub-query 2 described the recording rather than naming it, sub-query 3 abandoned the thread to ask for the members of The Band, and the reactive query at hop 4 returned to describing. Reachability is emphatic: 'The Night They Drove Old Dixie Down' returns the song's article at 0.7597, and 'Who sang lead vocals on The Night They Drove Old Dixie Down?', which is almost exactly what sub-query 2 should have become once hop 1 returned, retrieves it at 0.7882. The refusal is correct, since Levon Helm's name never entered the context.",
+      "notes": "Eighth instance of the plan describing a bridge entity rather than naming one available in context, after cases 8, 11, 15, 29, 32, 33 and 34. Sub-query 3 is a fifteenth collision and the most extreme kind recorded: a group whose name is an ordinary noun phrase. 'What are the names of the members of The Band?' returned Diamond Rio, Rex Salas, The Super Happy Fun Club, a nightclub's gig list and a Cornish band, and no query naming The Band can succeed in this corpus. Worth keeping the contrast with Ablation 1, which stalled on the identical query three times and answered 'Rick Danko', a genuine member of The Band but not the one who sang lead; the Main System refused. Neither held Helm's name, so the refusal is correct behaviour and the guess is not, making this a case where the Main System's grounding discipline shows better than the ablation's despite both scoring zero. Baselines A and B also answered 'Rick Danko'."
+    },
+    {
+      "n": 38,
+      "question_id": "5ac2583b55429951e9e68565",
+      "type": "comparison",
+      "question": "Who has more scope of profession, Brian G. Hutton or Xawery Żuławski?",
+      "gold_answer": "Xawery Żuławski",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Brian G. Hutton"
+      ],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles are single chunks and were read in full. Brian G. Hutton 'was an American actor and film director'; Xawery Zulawski 'is a Polish film director'. Two professions against one, so on the complete evidence the answer to which of them has the greater scope of profession is Hutton, and the gold names the other. The annotation is contradicted by the supporting sentence supplied with it. There is no indeterminacy of the kind seen at case 17, because the system refused rather than answering, so no alternative reading exists under which it did something wrong: it never retrieved Hutton's article, and declining a comparison with one side missing is correct behaviour.",
+      "notes": "Fifth unanswerable case and the fourth of the defective gold subtype. All four, cases 3, 17, 20 and 38, share a single mechanism: the annotator's answer is contradicted by the supporting sentence supplied alongside it. That is a tighter characterisation than simply saying the gold is wrong, and says something about how the dataset was constructed rather than only that it contains errors. Baseline A answered 'Xawery Zulawski' and scored EM = 1 while holding only Zulawski's article, naming the sole person available to it without performing any comparison; this is the fourth instance of that artefact after cases 9 and 30, and it inflates Baseline A's score precisely on questions where it retrieved least, which is worth noting when discussing baseline performance. Sixteenth collision recorded: 'Who is Brian G. Hutton?' returned Tim Howard, Gregory Campbell (ice hockey), Brian Robbins and Brian Griese, forename matching again."
+    },
+    {
+      "n": 39,
+      "question_id": "5adbf44355429944faac23ce",
+      "type": "bridge",
+      "question": "In which county does the 8th Military Police Brigade of the United States Army's Barracks located?",
+      "gold_answer": "Honolulu",
+      "system_answer": "Hawaii",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Schofield Barracks"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The plan had three steps, moving from the brigade's full name to the barracks location and then to the county. Hop 1 retrieved 8th Military Police Brigade (United States)_0, which states that the brigade is based at Schofield Barracks, Hawaii, and D3 declared sufficiency on that, leaving sub-queries 2 and 3 unexecuted. The system answered 'Hawaii', a state rather than a county, because the county appears only in the Schofield Barracks article, which was never retrieved. The stop was causal: Baseline B ran a second hop, retrieved Schofield Barracks_0 and answered 'Honolulu County, Hawaii' correctly, and the barracks were named in hop 1's chunk, so a second hop had everything it required. The structure matches case 26, where the system likewise held the bridge entity, D3 judged that sufficient, and the answer was produced from what was already in hand. Retrieval is not recorded as secondary because the article's absence follows from the stop rather than from any retrieval attempt failing.",
+      "notes": "Fourth instance of stopped_early and the second that cost the answer, after case 26; cases 1 and 35 were non-causal because the missing evidence was unreachable regardless. The LLM judge scored this case 5 for faithfulness, 5 for relevance and 5 for coherence. 'Hawaii' is faithful to the retrieved text, relevant to the topic and coherently expressed, and it is the wrong answer, so the case is a concrete illustration of the judge evaluating an answer against the evidence the system happened to retrieve rather than against what the question asked. Useful in the discussion of judge limitations as an observed instance rather than a cited concern. Baseline A and Ablation 1 also answered 'Hawaii'."
+    },
+    {
+      "n": 40,
+      "question_id": "5ade664555429939a52fe89c",
+      "type": "bridge",
+      "question": "WSCV's transmitter is located near this stadium located in which suburb?",
+      "gold_answer": "Miami Gardens, Florida,",
+      "system_answer": "North Miami-Dade County",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Hard Rock Stadium"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Structurally identical to case 39. The plan was correct and minimal, naming the stadium and then its suburb. Hop 1 retrieved WSCV_1, which states that the transmitter is located near Hard Rock Stadium in north Miami-Dade County, and D3 declared sufficiency on that, leaving sub-query 2 unexecuted. The system answered 'North Miami-Dade County', a county rather than a suburb, because the suburb appears only in the Hard Rock Stadium article, which was never retrieved. The stop was causal: Baseline B ran a second hop, retrieved Hard Rock Stadium_0 and answered 'Miami Gardens' correctly, and the stadium was named in hop 1's chunk, so a second hop had all it needed.",
+      "notes": "Fifth instance of stopped_early and the third that cost the answer, after cases 26 and 39. Cases 39 and 40 share a single characterisable shape: D3 accepts the location of the bridge entity as the answer when a more specific location was asked for, a state in place of a county at case 39 and a county in place of a suburb here. That is a pattern rather than two isolated misfires and is worth reporting as such. The LLM judge scored this case 5 for faithfulness, 3 for relevance and 5 for coherence, against 5/5/5 for case 39, although the two answers fail in exactly the same way. The judge caught this one partially and missed the other entirely, which points to inconsistency in the judge rather than any real difference between the cases, and the matched pair makes the point without appeal to the literature. Baseline A and Ablation 1 also answered 'North Miami-Dade County'."
+    },
+    {
+      "n": 41,
+      "question_id": "5adefdd75542995ec70e8f4e",
+      "type": "bridge",
+      "question": "How many times has the team Jack McKeon managed won the World Series?",
+      "gold_answer": "two World Series championships",
+      "system_answer": "Not enough information.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Miami Marlins"
+      ],
+      "primary": "decomposition failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Jim Tracy (baseball)_0 was retrieved at hop 2 and contains the bridge fact, describing Tracy as joining Jack McKeon for the Florida Marlins. The team name was therefore in context from hop 2 onward and no subsequent query used it: sub-queries 3 and 4 both refer to 'the teams managed by Jack McKeon' rather than naming the Marlins, and both returned generic World Series material including the 1929 and 1931 Philadelphia Athletics seasons and the 2000 and 2015 World Series. The franchise rename was considered as an obstacle and ruled out: 'Florida Marlins' returns Miami Marlins_0 at rank 2 (0.6983), so the embedder bridges the old and new names, and a query naming the team would have retrieved the gold article directly.",
+      "notes": "Ninth instance of the plan describing an entity rather than naming one available in context, after cases 8, 11, 15, 29, 32, 33, 34 and 37. The reachability test moved the verdict away from retrieval failure for the fourth time in the sample, after cases 11, 15 and 35. Two aggravating factors: the plan's four sub-queries consumed the entire hop budget so no reactive repair was possible, and steps 3 and 4 ask nearly the same question, the over-granularity seen at cases 11, 14 and 34. Seventeenth collision recorded at hop 1, where 'Who is Jack McKeon?' returned Jeff Tremaine, Steve McGarrett, Charlie Plummer, Jack Truelove and Jack Whalen, matching on the forename; McKeon's own article appears unreachable, though it was not needed, since the Marlins link came through Jim Tracy. The judge scored 5 for faithfulness, 1 for relevance and 5 for coherence, the same signature as case 12, so a correct refusal reads as fully faithful and entirely irrelevant. Across the refusals the judge scored this pattern is consistent, meaning judge relevance cannot distinguish a well-grounded refusal from a bad answer. All four systems refused."
+    },
+    {
+      "n": 42,
+      "question_id": "5adfb4b8554299603e418381",
+      "type": "comparison",
+      "question": "What do Káťa Kabanovát and Der ferne Klang have in common?",
+      "gold_answer": "an opera",
+      "system_answer": "Both are operas.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "scoring artefact",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The system's answer is correct. Both gold sentences state plainly that each work is an opera, and the system reported exactly that. The gold normalises to the single token 'opera' and the answer normalises to 'both are operas'; because token matching is exact, the plural form shares nothing with the singular, and even the bare word 'operas' scores EM 0 and F1 0.0 against this gold. The entire failure is one letter. Nothing in the pipeline went wrong: both gold articles were retrieved on hops 1 and 2 and D5 synthesised correctly from them.",
+      "notes": "The strongest evidence in the sample in favour of the decomposition mechanism, and a counterweight to the ten cases where it lost answers. The question contains a corrupted entity name, 'Káťa Kabanovát' with a stray trailing t, and the three comparator systems, all of which query the question directly, retrieved nothing relevant whatever: Kujang (weapon), Karnic languages, Upper Kuskokwim people and Ipomoea aquatica, and all three refused. Sub-query 1 rewrote the name correctly and added the word 'opera', retrieving Káťa Kabanová_0 at rank 1, and sub-query 2 did the same for Der ferne Klang_0. Decomposition therefore recovered an answer no other configuration could reach, by normalising a mangled name. Also note that the plan ran to ten sub-queries against a four-hop budget, the longest in the sample, and this did no harm because the first two hops retrieved everything required. That qualifies the case 14 finding: over-long plans are damaging when the answering sub-query falls late in the sequence, and immaterial when the early ones happen to suffice."
+    },
+    {
+      "n": 43,
+      "question_id": "5adfcb5455429906c02daa48",
+      "type": "bridge",
+      "question": "What character in \"Father Ted\" was played by an actor who starred in Death in Paradise?",
+      "gold_answer": "Father Dougal McGuire",
+      "system_answer": "Ardal O'Hanlon",
+      "hops": 3,
+      "stop_condition": "sufficiency",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Hop 3 retrieved Ardal O'Hanlon_0, which states that he played Father Dougal McGuire in Father Ted and DI Jack Mooney in Death in Paradise, so the answer was in context when synthesis ran and D3's sufficiency call at hop 3 was correct. The question asks which character was played, and the system answered with the actor's name instead, giving the bridge entity in place of the endpoint. Retrieval, classification and stopping were all sound, and all three comparator systems answered Father Dougal McGuire correctly.",
+      "notes": "Sub-query 2 read 'What character in the television series Father Ted was played by the actor identified in the previous question?', which is precisely the self-reference D2's rules forbid, and it passed validation. The bad_patterns list contains 'identified above' and 'from the previous' but not 'identified in the previous question', so no substring matched and the sub-query was accepted. This is a gap in contract enforcement and the third defect located by failure analysis rather than by the test suite, after the decomposer retry branch at case 23 and the reactive query extraction at case 25; the suite verifies that listed patterns are rejected and cannot detect patterns absent from the list. The defect was not causal here: sub-query 2 retrieved Father Ted articles without O'Hanlon, and the reactive query at hop 3, 'actor from Death in Paradise who appeared in Father Ted', recovered the right article. That is also worth recording in the reactive path's favour, since cases 32 and 33 showed it reproducing the plan's description defect while here it dropped the self-reference and queried on content. Fifth instance of answering with the bridge entity rather than the endpoint, after cases 8, 15, 34 and 35, making it the most repeated reasoning-failure shape in the sample."
+    },
+    {
+      "n": 44,
+      "question_id": "5ae2e0fd55429928c4239524",
+      "type": "bridge",
+      "question": "What actor was also a president that Richard Darman worked with when they were in office?",
+      "gold_answer": "George H. W. Bush",
+      "system_answer": "Ronald Reagan",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles are single chunks and were read in full. Richard Darman 'served in senior positions during the presidencies of Ronald Reagan and George H. W. Bush', and Ronald Reagan 'was an American statesman and actor... after a career as a Hollywood actor and union leader', naming him an actor twice. The question asks which of Darman's two presidents was an actor, and the evidence answers Reagan explicitly, while the gold names the other one. A corpus-wide search returned no chunk describing Bush as an actor; the nine hits containing both 'bush' and 'actor' are coincidental co-occurrences in unrelated articles such as Anthony Bushell and Roy Holder. There is no indeterminacy: the system's answer is correct on any reading, all four systems gave it, and the LLM judge scored it 5 for faithfulness, relevance and coherence.",
+      "notes": "Fifth defective gold, after cases 3, 17, 20 and 38, and the starkest instance of the shared mechanism in which the annotator's answer is contradicted by the supporting sentence supplied alongside it. Here the Reagan article was included among the supporting facts specifically to establish the actor link, and the annotation then names the president that article does not describe."
+    },
+    {
+      "n": 45,
+      "question_id": "5ae305df5542992decbdcdc3",
+      "type": "bridge",
+      "question": "At what venue was the January 2, 2012 game featured the University of Louisville team?",
+      "gold_answer": "Mercedes-Benz Superdome",
+      "system_answer": "The retrieved information does not provide the venue for the January 2, 2012 game featuring the University of Louisville team.",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "2013 Sugar Bowl"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": true,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The first case in the sample where the chunking boundary itself caused the failure. The 2012 Louisville Cardinals football team article runs to two chunks, and the bridge sentence is split between them: chunk 0 ends mid-sentence at 'They were invited to', and chunk 1 begins 'in the final BCS poll, the Cardinals received the conference's automatic bid into a BCS game. They were invited to the Sugar Bowl where they defeated Florida.' The system retrieved chunk 0 on hops 2 and 4 and never retrieved chunk 1, so the words 'Sugar Bowl' were never in context. Had they been, the remainder of the chain was one query away: '2013 Sugar Bowl' returns the gold article at 0.7305, and that article names both the Mercedes-Benz Superdome and the Louisville Cardinals. The refusal is correct given the context actually held.",
+      "notes": "The question misstates the date, asking about a game on January 2, 2012 when the game in the gold evidence was played on January 2, 2013; the 2012 Louisville season culminated in a bowl game the following January. Unanswerable was considered on that basis, since strictly the gold does not answer the question as asked, and rejected because the system failed well upstream of that difficulty: it never obtained the Sugar Bowl name at all, and had it done so the Sugar Bowl article names Louisville explicitly, so the date discrepancy would probably not have been decisive. Recording unanswerable would assert that nothing could have succeeded, which the reachability evidence contradicts. The chunk-boundary finding is the more specific limitation and follows directly from the 100-word chunk size with 20-word overlap fixed in the design chapter: the overlap was intended to prevent exactly this, and did not, because the sentence carrying the bridge fact fell across the boundary. Baseline B and Ablation 1 answered 'Yum Center', a Louisville basketball arena, with no support in their contexts; Baseline A refused."
+    },
+    {
+      "n": 46,
+      "question_id": "5ae397df5542994393b9e71f",
+      "type": "bridge",
+      "question": "What major landform lended its name to both the Blue Ridge Music Center, and American's longest linear park?",
+      "gold_answer": "469 mi",
+      "system_answer": "Blue Ridge Mountains",
+      "hops": 3,
+      "stop_condition": "sufficiency",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The question asks for a major landform and the gold answer is a distance. The gold sentence reads 'The parkway, which is America's longest linear park, runs for 469 mi through 29 Virginia and North Carolina counties', and the annotation has taken a span from the sentence containing the question's descriptive phrase without checking that the span answers the question type asked. The two gold articles establish the actual answer between them: the Blue Ridge Music Center is located on the Blue Ridge Parkway, and the Parkway is America's longest linear park, so the shared name is Blue Ridge. All four systems answered correctly in substance, giving 'Blue Ridge' or 'Blue Ridge Mountains', and all four scored zero. Note that 'Blue Ridge' appears in both retrieved gold chunks and is therefore grounded, while 'Mountains' appears in neither, so the Main System did append a word not present in its evidence; this does not affect the verdict, since '469 mi' is not a landform under any reading.",
+      "notes": "Sixth defective gold, sharing the mechanism of cases 3, 17, 20, 38 and 44, in which a span is extracted from the supporting sentence that does not answer the type of thing the question asks for. Recorded separately: hop 2 asked 'What is the name of America's longest linear park?' and returned Great South Bay Bridge, Lacey V. Murrow Memorial Bridge, Golden Gate National Recreation Area and California Screamin'. That phrase appears verbatim in the Blue Ridge Parkway gold sentence and the query missed it entirely, a third instance of a query quoting the target sentence failing to retrieve it, after the genre description at case 15 and 'most successful retro-clone' at case 25. It did not affect the outcome here, since hop 3 recovered the Parkway article."
+    },
+    {
+      "n": 47,
+      "question_id": "5ae3cd685542990afbd1e1de",
+      "type": "bridge",
+      "question": "What ethnicity are french people referring to when they use the term banlieues?",
+      "gold_answer": "African ancestry or Afro-Caribbean",
+      "system_answer": "Berbers, Blacks, and Arabs",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "2/2",
+      "missed_articles": [],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": true
+      },
+      "rationale": "Both gold chunks were in context from hop 1. Social situation in the French suburbs_0 states that the term describes suburbs with a high proportion of residents of foreign origin mainly from former French African colonies 'and therefore Berbers, Blacks and Arabs', and Blacks in France_0 states that French Black people are of Black African ancestry or Afro-Caribbean. The system answered with the first of these, taken verbatim from the article about the term itself, and all four systems did the same. Against the gold this is the wrong selection and the case is recorded as a reasoning failure on that basis, but the answer given is arguably the better response to the question as asked: the question asks what ethnicity the term refers to, the banlieues article answers that directly, and the gold instead narrows one of the three named groups by way of a second article describing Black people in France rather than describing what the term refers to. The gold is supported and does answer the question, so unanswerable does not apply; it is narrower than the question warrants.",
+      "notes": "Fifth second_valid_answer case, after 1, 26, 27 and 30, and all five are recorded as reasoning failures. Five of the thirteen cases in that category therefore involve no reasoning error at all, which should be stated explicitly when the taxonomy is reported, since the headline count would otherwise substantially overstate the model's reasoning errors. The LLM judge scored this case 5 for faithfulness, relevance and coherence, agreeing with the reading that the answer is sound."
+    },
+    {
+      "n": 48,
+      "question_id": "5ae56a3f5542992663a4f1f4",
+      "type": "bridge",
+      "question": "What is the former name of the animal whose habitat the Réserve Naturelle Lomako Yokokala was established to protect?",
+      "gold_answer": "pygmy chimpanzee",
+      "system_answer": "Bonobo apes",
+      "hops": 1,
+      "stop_condition": "sufficiency",
+      "coverage": "1/2",
+      "missed_articles": [
+        "Bonobo"
+      ],
+      "primary": "reasoning failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": true,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The plan was minimal and correct, asking for the animal's current name and then its former name. Hop 1 retrieved Reserve Naturelle Lomako Yokokala_0, which states that the reserve was established to protect the habitat of the Bonobo apes, answering sub-query 1. D3 then declared sufficiency and sub-query 2 never ran, so the system answered 'Bonobo apes', the current name, where the question asked for the former one. The stop was causal: Baseline B ran a second hop, retrieved Bonobo_0 and answered 'Pygmy chimpanzee' correctly, so the required article was a single query away and the animal's name was already in hop 1's chunk.",
+      "notes": "Sixth instance of stopped_early and the fourth that cost the answer, after cases 26, 39 and 40. Also the sixth case of answering with the bridge entity rather than the endpoint, after cases 8, 15, 34, 35 and 43; four of those six were premature stops, which connects the two patterns, since when D3 stops on the bridge entity that entity is what synthesis reports. Sub-query 2 reads 'the animal identified in the previous question', the same self-reference that passed validation at case 43, confirming that the decomposer's bad_patterns list is missing a common phrasing rather than having failed once. It had no effect here because the sub-query never ran. Ablation 1 also stopped after a single hop and answered 'Bonobo apes'; Baseline A did the same."
+    },
+    {
+      "n": 49,
+      "question_id": "5ae61dce5542992663a4f262",
+      "type": "bridge",
+      "question": "What role did Julianne Moore play in the 2002 Oscar winning movie?",
+      "gold_answer": "emotionally troubled women",
+      "system_answer": "Cathy Whitaker",
+      "hops": 1,
+      "stop_condition": "single_hop",
+      "coverage": "1/2",
+      "missed_articles": [
+        "The Hours (novel)"
+      ],
+      "primary": "unanswerable",
+      "unanswerable_subtype": "defective gold",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "Both gold articles are single chunks and were read in full; neither names a role. The Julianne Moore article gives only a career description, that she is 'particularly known for her portrayals of emotionally troubled women', which is a type of character rather than a part in any film, and The Hours (novel) names the cast without naming any characters. The question asks what role she played in one specific 2002 film, and the annotation has offered a span describing the kind of parts she generally plays. The system answered 'Cathy Whitaker', her role in Far from Heaven, retrieved as Far from Heaven_0 on the only hop; that is a real role in a 2002 film she starred in, although Far from Heaven was Oscar-nominated rather than Oscar-winning, so The Hours is the film the question intends. All four systems gave the same answer.",
+      "notes": "Seventh defective gold, sharing the mechanism of cases 3, 17, 20, 38, 44 and 46. Unanswerable here in a stronger sense than most: in cases 20, 38, 44 and 46 the correct answer was recoverable from the gold evidence even though the annotation named something else, whereas here the actual answer, Laura Brown, appears in neither gold article, so no system could have answered correctly from the supporting facts supplied. This is the second such case after 17 and the more serious kind of annotation failure, since the question's answer is not supported by the evidence provided for it."
+    },
+    {
+      "n": 50,
+      "question_id": "5ae7b40e5542994a481bbdbd",
+      "type": "bridge",
+      "question": "Summer Holiday starred what actor who won  a BAFTA in 1954>",
+      "gold_answer": "David Kossoff",
+      "system_answer": "Cliff Richard",
+      "hops": 4,
+      "stop_condition": "max_hops",
+      "coverage": "1/2",
+      "missed_articles": [
+        "David Kossoff"
+      ],
+      "primary": "retrieval failure",
+      "secondary": [],
+      "attributes": {
+        "refused": false,
+        "stopped_early": false,
+        "d1_misclassified": false,
+        "second_valid_answer": false
+      },
+      "rationale": "The cast list was in context from hop 1, Summer Holiday (1963 film)_0 naming thirteen actors including David Kossoff, and the system answered with Cliff Richard, the singer named in the article's opening sentence. The discriminating fact, that Kossoff won a BAFTA in 1954, exists only in his own article, which nothing retrieved. This is the candidates-present, discriminator-absent shape of cases 2, 21 and 33, and reachability testing places it with case 2 rather than case 33. The name alone fails outright: 'David Kossoff' returns Samuel Kuffour, Bernhard Kontarsky, Colin Kolles and Rory Kostjasyn. Adding 'British actor' reaches him only at rank 2 and 0.5353, below David Walliams and among David Kross and David Schwimmer, and a query built from the question alone, 'British actor who won a BAFTA in 1954 for The Young Lovers', reaches him at rank 4 and 0.4548. With thirteen candidates, three remaining hops and a weak signal on even the correct name, the naming route was not realistically available in the way it was at cases 33, 37 and 41, where the target sat at or near rank 1 for its own name. Decomposition is therefore not recorded: sub-query 1 was correct and succeeded, and although sub-queries 2 and 3 describe rather than name, correcting that would not plausibly have recovered the answer.",
+      "notes": "Eighteenth and final collision recorded, matching on surname shape. Hops 3 and 4 also show the reverse pattern seen with 'prize' at case 36: queries asking about a BAFTA-winning actor returned institutional pages about the award itself, the 5th, 6th and 70th British Academy Film Awards and BAFTA Scotland, with a common noun in the query dominating the entity sought. All four systems answered 'Cliff Richard'."
+    }
+  ]
+}

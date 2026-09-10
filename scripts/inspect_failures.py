@@ -212,8 +212,19 @@ def inspect(split: str, n: int, reactive_only: bool = False,
             item = gold.get(r["question_id"], {})
             r["_f1"] = f1
             r["_type"] = item.get("type", "unknown")
-            # Access pattern matches metrics.supporting_facts_recall().
-            r["_gold_titles"] = item.get("supporting_facts", {}).get("title", [])
+            # HotpotQA annotates supporting facts per SENTENCE, so a title
+            # repeats once per supporting sentence drawn from that article.
+            # Deduplicate while preserving order, matching
+            # metrics.supporting_facts_recall(), so that a two-document
+            # question reads as 2 required articles rather than 3 or 4.
+            raw_titles = item.get("supporting_facts", {}).get("title", [])
+            seen_titles = set()
+            distinct = []
+            for t in raw_titles:
+                if t.lower() not in seen_titles:
+                    seen_titles.add(t.lower())
+                    distinct.append(t)
+            r["_gold_titles"] = distinct
             failures.append(r)
 
     # Optional filter: keep only failures that entered reactive mode, i.e. the
