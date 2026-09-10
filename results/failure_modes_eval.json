@@ -1,0 +1,276 @@
+{
+  "generated_at": "2026-09-10T19:28:56.336207",
+  "split": "eval",
+  "n_sampled": 50,
+  "n_population": 395,
+  "sample_seed": 42,
+  "interval_method": "Wilson score, 95%, with finite population correction for sampling n of N without replacement",
+  "caveat": "Intervals are wide at this sample size. Categories whose intervals overlap cannot be ranked against one another; the counts establish that each mode occurs and is not negligible, not which is largest.",
+  "primary_category": {
+    "reasoning failure": {
+      "n": 14,
+      "share": 0.28,
+      "ci_95": [
+        0.1668,
+        0.3932
+      ],
+      "implied_in_population": [
+        66,
+        155
+      ]
+    },
+    "retrieval failure": {
+      "n": 15,
+      "share": 0.3,
+      "ci_95": [
+        0.1847,
+        0.4153
+      ],
+      "implied_in_population": [
+        73,
+        164
+      ]
+    },
+    "unanswerable": {
+      "n": 9,
+      "share": 0.18,
+      "ci_95": [
+        0.0816,
+        0.2784
+      ],
+      "implied_in_population": [
+        32,
+        110
+      ]
+    },
+    "decomposition failure": {
+      "n": 10,
+      "share": 0.2,
+      "ci_95": [
+        0.098,
+        0.302
+      ],
+      "implied_in_population": [
+        39,
+        119
+      ]
+    },
+    "error propagation": {
+      "n": 1,
+      "share": 0.02,
+      "ci_95": [
+        0.0,
+        0.0675
+      ],
+      "implied_in_population": [
+        0,
+        27
+      ]
+    },
+    "classification failure": {
+      "n": 1,
+      "share": 0.02,
+      "ci_95": [
+        0.0,
+        0.0675
+      ],
+      "implied_in_population": [
+        0,
+        27
+      ]
+    },
+    "grounding failure": {
+      "n": 0,
+      "share": 0.0,
+      "ci_95": [
+        0.0,
+        0.0334
+      ],
+      "implied_in_population": [
+        0,
+        13
+      ]
+    }
+  },
+  "secondary_category": {
+    "reasoning failure": 3,
+    "decomposition failure": 1,
+    "retrieval failure": 2,
+    "classification failure": 1
+  },
+  "multi_label_cases": [
+    2,
+    3,
+    12,
+    15,
+    18,
+    21
+  ],
+  "unanswerable_subtype": {
+    "defective gold": 7,
+    "scoring artefact": 2
+  },
+  "attributes": {
+    "refused": {
+      "n": 17,
+      "share": 0.34,
+      "ci_95": [
+        0.2211,
+        0.4589
+      ],
+      "cases": [
+        5,
+        12,
+        13,
+        14,
+        16,
+        17,
+        21,
+        25,
+        29,
+        31,
+        32,
+        33,
+        36,
+        37,
+        38,
+        41,
+        45
+      ]
+    },
+    "stopped_early": {
+      "n": 6,
+      "share": 0.12,
+      "ci_95": [
+        0.0349,
+        0.2051
+      ],
+      "cases": [
+        1,
+        26,
+        35,
+        39,
+        40,
+        48
+      ]
+    },
+    "d1_misclassified": {
+      "n": 3,
+      "share": 0.06,
+      "ci_95": [
+        0.0,
+        0.1262
+      ],
+      "cases": [
+        6,
+        18,
+        21
+      ]
+    },
+    "second_valid_answer": {
+      "n": 5,
+      "share": 0.1,
+      "ci_95": [
+        0.0204,
+        0.1796
+      ],
+      "cases": [
+        1,
+        26,
+        27,
+        30,
+        47
+      ]
+    }
+  },
+  "no_system_fault": {
+    "n": 14,
+    "share": 0.28,
+    "ci_95": [
+      0.1668,
+      0.3932
+    ],
+    "cases": [
+      1,
+      3,
+      10,
+      17,
+      20,
+      26,
+      27,
+      30,
+      38,
+      42,
+      44,
+      46,
+      47,
+      49
+    ]
+  },
+  "category_by_coverage": {
+    "classification failure": {
+      "1/2": 1
+    },
+    "decomposition failure": {
+      "1/2": 8,
+      "0/2": 1,
+      "2/2": 1
+    },
+    "error propagation": {
+      "1/2": 1
+    },
+    "reasoning failure": {
+      "1/2": 8,
+      "2/2": 6
+    },
+    "retrieval failure": {
+      "1/2": 10,
+      "0/2": 5
+    },
+    "unanswerable": {
+      "2/2": 5,
+      "1/2": 4
+    }
+  },
+  "category_by_stop_condition": {
+    "classification failure": {
+      "single_hop": 1
+    },
+    "decomposition failure": {
+      "max_hops": 10
+    },
+    "error propagation": {
+      "max_hops": 1
+    },
+    "reasoning failure": {
+      "sufficiency": 7,
+      "max_hops": 4,
+      "single_hop": 3
+    },
+    "retrieval failure": {
+      "max_hops": 13,
+      "single_hop": 1,
+      "sufficiency": 1
+    },
+    "unanswerable": {
+      "max_hops": 5,
+      "sufficiency": 2,
+      "single_hop": 2
+    }
+  },
+  "category_by_question_type": {
+    "bridge": {
+      "reasoning failure": 11,
+      "retrieval failure": 14,
+      "unanswerable": 7,
+      "decomposition failure": 10,
+      "error propagation": 1,
+      "classification failure": 1
+    },
+    "comparison": {
+      "reasoning failure": 3,
+      "retrieval failure": 1,
+      "unanswerable": 2
+    }
+  }
+}
