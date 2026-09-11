@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="464" viewBox="0 0 860 464" font-family="Helvetica,Arial,sans-serif">
 <rect width="860" height="464" fill="#ffffff"/>
 <text x="24" y="34" font-size="17" font-weight="600" fill="#1a1a1a">Primary failure mode, 50 sampled Main System failures</text>
-<text x="24" y="56" font-size="12.5" fill="#666666">Bars show share of sample; whiskers show 95% interval (Wilson, finite population correction, n=50 of N=395).</text>
+<text x="24" y="56" font-size="12.5" fill="#666666">Bars show share of sample; whiskers show 95% interval (Wilson score, n=50 of N=395).</text>
 <line x1="210.0" y1="80" x2="210.0" y2="374" stroke="#d8d8d8" stroke-width="1"/>
 <text x="210.0" y="394" font-size="11.5" fill="#666666" text-anchor="middle">0%</text>
 <line x1="338.9" y1="80" x2="338.9" y2="374" stroke="#d8d8d8" stroke-width="1"/>
@@ -14,45 +14,45 @@
 <text x="725.6" y="394" font-size="11.5" fill="#666666" text-anchor="middle">40%</text>
 <text x="196" y="102" font-size="13" fill="#1a1a1a" text-anchor="end">retrieval failure</text>
 <rect x="210" y="88" width="386.7" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="448.0" y1="98" x2="745.3" y2="98" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="448.0" y1="92" x2="448.0" y2="104" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="745.3" y1="92" x2="745.3" y2="104" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="755.3" y="102" font-size="12.5" fill="#666666">15  (30%)</text>
+<line x1="456.2" y1="98" x2="773.9" y2="98" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="456.2" y1="92" x2="456.2" y2="104" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="773.9" y1="92" x2="773.9" y2="104" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="783.9" y="102" font-size="12.5" fill="#666666">15  (30%)</text>
 <text x="196" y="144" font-size="13" fill="#1a1a1a" text-anchor="end">reasoning failure</text>
 <rect x="210" y="130" width="360.9" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="425.0" y1="140" x2="716.8" y2="140" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="425.0" y1="134" x2="425.0" y2="146" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="716.8" y1="134" x2="716.8" y2="146" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="726.8" y="144" font-size="12.5" fill="#666666">14  (28%)</text>
+<line x1="435.2" y1="140" x2="747.0" y2="140" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="435.2" y1="134" x2="435.2" y2="146" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="747.0" y1="134" x2="747.0" y2="146" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="757.0" y="144" font-size="12.5" fill="#666666">14  (28%)</text>
 <text x="196" y="186" font-size="13" fill="#1a1a1a" text-anchor="end">decomposition failure</text>
 <rect x="210" y="172" width="257.8" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="336.4" y1="182" x2="599.2" y2="182" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="336.4" y1="176" x2="336.4" y2="188" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="599.2" y1="176" x2="599.2" y2="188" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="609.2" y="186" font-size="12.5" fill="#666666">10  (20%)</text>
+<line x1="354.9" y1="182" x2="635.8" y2="182" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="354.9" y1="176" x2="354.9" y2="188" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="635.8" y1="176" x2="635.8" y2="188" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="645.8" y="186" font-size="12.5" fill="#666666">10  (20%)</text>
 <text x="196" y="228" font-size="13" fill="#1a1a1a" text-anchor="end">unanswerable</text>
 <rect x="210" y="214" width="232.0" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="315.2" y1="224" x2="568.8" y2="224" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="315.2" y1="218" x2="315.2" y2="230" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="568.8" y1="218" x2="568.8" y2="230" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="578.8" y="228" font-size="12.5" fill="#666666">9  (18%)</text>
+<line x1="335.9" y1="224" x2="606.9" y2="224" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="335.9" y1="218" x2="335.9" y2="230" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="606.9" y1="218" x2="606.9" y2="230" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="616.9" y="228" font-size="12.5" fill="#666666">9  (18%)</text>
 <text x="196" y="270" font-size="13" fill="#1a1a1a" text-anchor="end">error propagation</text>
 <rect x="210" y="256" width="25.8" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="210.0" y1="266" x2="296.9" y2="266" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="210.0" y1="260" x2="210.0" y2="272" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="296.9" y1="260" x2="296.9" y2="272" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="306.9" y="270" font-size="12.5" fill="#666666">1  (2%)</text>
+<line x1="214.6" y1="266" x2="345.3" y2="266" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="214.6" y1="260" x2="214.6" y2="272" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="345.3" y1="260" x2="345.3" y2="272" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="355.3" y="270" font-size="12.5" fill="#666666">1  (2%)</text>
 <text x="196" y="312" font-size="13" fill="#1a1a1a" text-anchor="end">classification failure</text>
 <rect x="210" y="298" width="25.8" height="20" fill="#4a6fa5" rx="2"/>
-<line x1="210.0" y1="308" x2="296.9" y2="308" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="210.0" y1="302" x2="210.0" y2="314" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="296.9" y1="302" x2="296.9" y2="314" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="306.9" y="312" font-size="12.5" fill="#666666">1  (2%)</text>
+<line x1="214.6" y1="308" x2="345.3" y2="308" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="214.6" y1="302" x2="214.6" y2="314" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="345.3" y1="302" x2="345.3" y2="314" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="355.3" y="312" font-size="12.5" fill="#666666">1  (2%)</text>
 <text x="196" y="354" font-size="13" fill="#1a1a1a" text-anchor="end">grounding failure</text>
-<line x1="210.0" y1="350" x2="253.0" y2="350" stroke="#1a1a1a" stroke-width="1.4"/>
+<line x1="210.0" y1="350" x2="302.0" y2="350" stroke="#1a1a1a" stroke-width="1.4"/>
 <line x1="210.0" y1="344" x2="210.0" y2="356" stroke="#1a1a1a" stroke-width="1.4"/>
-<line x1="253.0" y1="344" x2="253.0" y2="356" stroke="#1a1a1a" stroke-width="1.4"/>
-<text x="263.0" y="354" font-size="12.5" fill="#666666">0  (0%)</text>
+<line x1="302.0" y1="344" x2="302.0" y2="356" stroke="#1a1a1a" stroke-width="1.4"/>
+<text x="312.0" y="354" font-size="12.5" fill="#666666">0  (0%)</text>
 <text x="24" y="430" font-size="12" fill="#666666">Intervals overlap substantially: the modes cannot be ranked against one another at this sample size.</text>
 <text x="24" y="449" font-size="12" fill="#666666">The counts establish that each mode occurs and is not negligible, not which is largest.</text>
 </svg>
