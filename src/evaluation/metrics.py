@@ -161,7 +161,7 @@ def retrieval_precision(result: dict, hotpotqa_item: dict) -> float:
 
     Counted over DEDUPLICATED chunks, because that is what the model saw: the
     retrieval loop removes duplicates before assembling the context (see
-    _shared_retrieval._accumulate_context), so a chunk retrieved on three hops
+    _shared_retrieval._deduplicate_chunks), so a chunk retrieved on three hops
     is read once.
 
     Counting the raw retrieved list instead — as this originally did — inflates

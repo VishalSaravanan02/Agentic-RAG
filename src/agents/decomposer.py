@@ -53,11 +53,13 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
     Break a question into an ordered list of sub-questions.
 
     Validation: at least 2 sub-questions, none containing placeholders
-    or references to other sub-questions. On validation failure, the
-    retry includes corrective feedback (at temperature 0, retrying an
-    identical prompt reproduces the identical output — the prompt must
-    change for the retry to be useful). Falls back to the original
-    question as a single sub-query after 3 failed attempts.
+    or references to other sub-questions. When a placeholder or reference
+    is detected, the retry appends corrective feedback so that it is guided
+    rather than a plain repeat; a retry for too few sub-questions re-sends
+    the unchanged prompt. Temperature 0 does not make the model fully
+    deterministic, so an unchanged retry can still return different output.
+    Falls back to the original question as a single sub-query after 3
+    failed attempts.
     """
     base_prompt = DECOMPOSITION_PROMPT_TEMPLATE.format(question=question)
     prompt = base_prompt
@@ -94,7 +96,8 @@ def decompose(question: str, model: str = DEV_MODEL) -> dict:
               f"got {len(sub_questions)} sub-questions"
               f"{', contains placeholder/reference' if has_bad else ''}")
 
-        # Corrective feedback: change the prompt so the retry differs
+        # Corrective feedback for placeholder/reference failures, so the
+        # retry is guided rather than a plain repeat of the same prompt
         if has_bad:
             prompt = base_prompt + (
                 "\n\nIMPORTANT: Your previous attempt used placeholders or "

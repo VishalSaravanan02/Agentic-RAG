@@ -76,7 +76,8 @@ def call_llm(
         prompt:     The prompt string to send
         model:      Model name (from config.py — DEV_MODEL, EVAL_MODEL, or JUDGE_MODEL)
         max_tokens: Maximum tokens in the response
-        temperature: 0.0 = deterministic (best for structured YES/NO outputs)
+        temperature: 0.0 = least random (best for structured YES/NO outputs);
+                     not guaranteed to be fully deterministic
 
     Returns:
         dict with keys:
