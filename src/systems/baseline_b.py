@@ -72,9 +72,8 @@ def _generate_hop2_query(question: str, context: str, model: str = DEV_MODEL) ->
     Generate the second retrieval query.
 
     Validation: non-empty, and no longer than MAX_HOP2_QUERY_WORDS words.
-    On validation failure the retry includes corrective feedback — at
-    temperature 0 an identical prompt reproduces an identical response, so
-    the prompt must change for a retry to be worth making (see decomposer.py).
+    On validation failure the retry includes corrective feedback, so that it
+    is guided rather than a plain repeat of the same prompt.
 
     Falls back to the original question after 3 failed attempts: Baseline B
     is meant to be undiscerning, not fragile. The fallback is announced on
@@ -108,7 +107,7 @@ def _generate_hop2_query(question: str, context: str, model: str = DEV_MODEL) ->
         reason = "empty response" if not query else f"{word_count} words (prose, not a query)"
         print(f"Hop-2 query invalid (attempt {attempt + 1}/{max_retries}): {reason}")
 
-        # Corrective feedback: the prompt must change for the retry to differ.
+        # Corrective feedback, so the retry is guided rather than a plain repeat.
         prompt = base_prompt + (
             "\n\nIMPORTANT: Your previous attempt was not a usable search query "
             f"({reason}). Reply with a short search phrase only — no sentences, "

@@ -1,0 +1,611 @@
+{
+  "generated_at": "2026-09-11T18:40:03.990969",
+  "split": "eval",
+  "seed": 42,
+  "n_resamples": 10000,
+  "note": "Supplementary analyses. None belongs to the Holm-corrected families of run_significance.py; every p-value is uncorrected.",
+  "rq2": {
+    "n_yes": 744,
+    "n_no": 256,
+    "interaction_main_vs_baseline_a": {
+      "exact_match": {
+        "difference": 0.0831,
+        "yes_gap": 0.0753,
+        "no_gap": -0.0078,
+        "ci_low": 0.0535,
+        "ci_high": 0.1139,
+        "p_value": 0.0002,
+        "significant": true,
+        "n_yes": 744,
+        "n_no": 256
+      },
+      "f1": {
+        "difference": 0.11,
+        "yes_gap": 0.1018,
+        "no_gap": -0.0082,
+        "ci_low": 0.081,
+        "ci_high": 0.141,
+        "p_value": 0.0002,
+        "significant": true,
+        "n_yes": 744,
+        "n_no": 256
+      }
+    },
+    "baseline_a_no_minus_yes": {
+      "exact_match": {
+        "observed_difference": 0.0448,
+        "ci_low": -0.0235,
+        "ci_high": 0.1155,
+        "p_value": 0.2065,
+        "significant": false
+      },
+      "f1": {
+        "observed_difference": 0.0507,
+        "ci_low": -0.0163,
+        "ci_high": 0.1175,
+        "p_value": 0.1364,
+        "significant": false
+      },
+      "supporting_facts_recall": {
+        "observed_difference": 0.0101,
+        "ci_low": -0.038,
+        "ci_high": 0.058,
+        "p_value": 0.6874,
+        "significant": false
+      }
+    },
+    "second_hop_gain_baseline_b_minus_a": {
+      "d1_yes": {
+        "exact_match": {
+          "observed_difference": 0.0874,
+          "ci_low": 0.0618,
+          "ci_high": 0.1142,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 744
+        },
+        "f1": {
+          "observed_difference": 0.1257,
+          "ci_low": 0.1006,
+          "ci_high": 0.1516,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 744
+        }
+      },
+      "d1_no": {
+        "exact_match": {
+          "observed_difference": 0.0703,
+          "ci_low": 0.0312,
+          "ci_high": 0.1094,
+          "p_value": 0.0003,
+          "significant": true,
+          "n_questions": 256
+        },
+        "f1": {
+          "observed_difference": 0.0752,
+          "ci_low": 0.0383,
+          "ci_high": 0.1128,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 256
+        }
+      }
+    },
+    "correct_answers": {
+      "d1_yes": {
+        "baseline_a": 266,
+        "baseline_b": 331,
+        "main_system": 322
+      },
+      "d1_no": {
+        "baseline_a": 103,
+        "baseline_b": 121,
+        "main_system": 101
+      }
+    },
+    "interaction_baseline_b_vs_baseline_a": {
+      "exact_match": {
+        "difference": 0.0171,
+        "yes_gap": 0.0874,
+        "no_gap": 0.0703,
+        "ci_low": -0.0297,
+        "ci_high": 0.063,
+        "p_value": 0.4714,
+        "significant": false,
+        "n_yes": 744,
+        "n_no": 256
+      },
+      "f1": {
+        "difference": 0.0506,
+        "yes_gap": 0.1257,
+        "no_gap": 0.0752,
+        "ci_low": 0.0056,
+        "ci_high": 0.0956,
+        "p_value": 0.0276,
+        "significant": true,
+        "n_yes": 744,
+        "n_no": 256
+      }
+    }
+  },
+  "sufficiency_stops": {
+    "definition": "A gold article is 'missing' when Supporting Facts Recall (article level) is below 1 at the point D3 declared sufficiency.",
+    "n_sufficiency_stops": 329,
+    "n_missing": 122,
+    "share_missing": 0.3708,
+    "sfr_distribution": {
+      "0.0": 6,
+      "0.5": 116,
+      "1.0": 207
+    },
+    "both_articles_found": {
+      "n": 207,
+      "main_system_em": 0.6184,
+      "baseline_b_em_same_questions": 0.57,
+      "baseline_b_minus_main_em": {
+        "observed_difference": -0.0483,
+        "ci_low": -0.087,
+        "ci_high": -0.0097,
+        "p_value": 0.0159,
+        "significant": true,
+        "n_questions": 207
+      }
+    },
+    "article_missing": {
+      "n": 122,
+      "main_system_em": 0.4754,
+      "baseline_b_em_same_questions": 0.5574,
+      "baseline_b_minus_main_em": {
+        "observed_difference": 0.082,
+        "ci_low": 0.0082,
+        "ci_high": 0.1557,
+        "p_value": 0.0215,
+        "significant": true,
+        "n_questions": 122
+      }
+    },
+    "by_stopping_hop": {
+      "1": {
+        "n": 120,
+        "n_missing": 82,
+        "share_missing": 0.6833
+      },
+      "2": {
+        "n": 94,
+        "n_missing": 24,
+        "share_missing": 0.2553
+      },
+      "3": {
+        "n": 65,
+        "n_missing": 9,
+        "share_missing": 0.1385
+      },
+      "4": {
+        "n": 50,
+        "n_missing": 7,
+        "share_missing": 0.14
+      }
+    }
+  },
+  "sfr_by_stop_group": {
+    "single_hop_path_d1_no": {
+      "n": 256,
+      "supporting_facts_recall": 0.582
+    },
+    "ended_after_one_hop_any_reason": {
+      "n": 376,
+      "supporting_facts_recall": 0.6024
+    },
+    "sufficiency_stop": {
+      "n": 329,
+      "supporting_facts_recall": 0.8055
+    },
+    "hop_limit": {
+      "n": 415,
+      "supporting_facts_recall": 0.6434
+    }
+  },
+  "judge_baseline_b_vs_main": {
+    "faithfulness": {
+      "observed_difference": 0.1,
+      "ci_low": -0.07,
+      "ci_high": 0.27,
+      "p_value": 0.2369,
+      "significant": false,
+      "n_questions": 200
+    },
+    "relevance": {
+      "observed_difference": 0.18,
+      "ci_low": 0.02,
+      "ci_high": 0.34,
+      "p_value": 0.0231,
+      "significant": true,
+      "n_questions": 200
+    },
+    "coherence": {
+      "observed_difference": 0.015,
+      "ci_low": -0.04,
+      "ci_high": 0.07,
+      "p_value": 0.5986,
+      "significant": false,
+      "n_questions": 200
+    }
+  },
+  "d1_agreement": {
+    "main_system/ablation_1": {
+      "NO/NO": 243,
+      "NO/YES": 13,
+      "YES/NO": 12,
+      "YES/YES": 732
+    },
+    "n_disagree": 25,
+    "n_questions": 1000
+  },
+  "plan_length": {
+    "distribution": {
+      "1": 4,
+      "2": 180,
+      "3": 354,
+      "4": 135,
+      "5": 53,
+      "6": 10,
+      "7": 4,
+      "8": 2,
+      "9": 1,
+      "10": 1
+    },
+    "n_multi_hop": 744,
+    "n_over_budget": 71,
+    "n_exactly_budget": 135,
+    "share_at_or_over_budget": 0.2769,
+    "unexecuted_sub_queries": {
+      "total": 462,
+      "because_plan_exceeded_budget": 66,
+      "because_d3_stopped_early": 396
+    },
+    "exact_match": {
+      "over_budget": {
+        "main_system": 0.4225,
+        "ablation_1": 0.4789,
+        "baseline_a": 0.3944
+      },
+      "within_budget": {
+        "main_system": 0.4339,
+        "ablation_1": 0.4502,
+        "baseline_a": 0.3536
+      }
+    },
+    "main_minus_ablation_em": {
+      "over_budget": {
+        "observed_difference": -0.0563,
+        "ci_low": -0.1549,
+        "ci_high": 0.0423,
+        "p_value": 0.2788,
+        "significant": false,
+        "n_questions": 71
+      },
+      "within_budget": {
+        "observed_difference": -0.0163,
+        "ci_low": -0.0386,
+        "ci_high": 0.0059,
+        "p_value": 0.146,
+        "significant": false,
+        "n_questions": 673
+      }
+    },
+    "difference_of_gaps_em": {
+      "difference": -0.04,
+      "yes_gap": -0.0563,
+      "no_gap": -0.0163,
+      "ci_low": -0.1452,
+      "ci_high": 0.0645,
+      "p_value": 0.4464,
+      "significant": false,
+      "n_yes": 71,
+      "n_no": 673
+    }
+  },
+  "decomposition_fallback": {
+    "n": 4,
+    "n_correct": 0,
+    "questions": [
+      "The song \"Medicine\" by The 1975 appears in a film directed by what Danish filmmaker?",
+      "Who is this American cartoonist, writer, producer, animator, and voice actor that worked with this multiple Shuster Award, Harvey Award and Eisner Award nominee and an Eisner Award\u2013winning comic book creator?",
+      "Over how many centuries were the \"dwelling place of the dead\" built?",
+      "in 1992 Spengler Cup all matches were played at the home arena of what professional Swiss ice hockey club "
+    ]
+  },
+  "decomposition_by_type": {
+    "bridge": {
+      "n": 799,
+      "exact_match": {
+        "observed_difference": -0.0288,
+        "ci_low": -0.0488,
+        "ci_high": -0.0088,
+        "p_value": 0.0053,
+        "significant": true,
+        "n_questions": 799
+      },
+      "f1": {
+        "observed_difference": -0.0302,
+        "ci_low": -0.0497,
+        "ci_high": -0.011,
+        "p_value": 0.0014,
+        "significant": true,
+        "n_questions": 799
+      }
+    },
+    "comparison": {
+      "n": 201,
+      "exact_match": {
+        "observed_difference": 0.0149,
+        "ci_low": -0.0149,
+        "ci_high": 0.0498,
+        "p_value": 0.368,
+        "significant": false,
+        "n_questions": 201
+      },
+      "f1": {
+        "observed_difference": 0.0044,
+        "ci_low": -0.0244,
+        "ci_high": 0.0326,
+        "p_value": 0.7606,
+        "significant": false,
+        "n_questions": 201
+      }
+    },
+    "difference_bridge_minus_comparison": {
+      "exact_match": {
+        "difference": -0.0437,
+        "yes_gap": -0.0288,
+        "no_gap": 0.0149,
+        "ci_low": -0.0823,
+        "ci_high": -0.0063,
+        "p_value": 0.0197,
+        "significant": true,
+        "n_yes": 799,
+        "n_no": 201
+      },
+      "f1": {
+        "difference": -0.0346,
+        "yes_gap": -0.0302,
+        "no_gap": 0.0044,
+        "ci_low": -0.0694,
+        "ci_high": -0.0009,
+        "p_value": 0.0444,
+        "significant": true,
+        "n_yes": 799,
+        "n_no": 201
+      }
+    }
+  },
+  "retrieval_volume": {
+    "mean_distinct_chunks_per_question": {
+      "baseline_a": 5.0,
+      "baseline_b": 8.505,
+      "ablation_1": 7.522,
+      "main_system": 9.712
+    }
+  },
+  "code_defects": {
+    "decomposer_fallback": {
+      "n_questions": 4
+    },
+    "reactive_query_extraction": {
+      "main_system": {
+        "n_reactive_queries": 471,
+        "n_unextracted": 2,
+        "n_questions": 2
+      },
+      "ablation_1": {
+        "n_reactive_queries": 1384,
+        "n_unextracted": 10,
+        "n_questions": 10
+      }
+    },
+    "unvalidated_self_reference": {
+      "n_sub_queries": 48,
+      "n_questions": 44,
+      "main_system_em_on_these": 0.2045,
+      "main_system_em_other_multi_hop": 0.4471,
+      "correct_answers_on_these": {
+        "baseline_a": 8,
+        "baseline_b": 14,
+        "ablation_1": 13,
+        "main_system": 9
+      }
+    },
+    "n_affected_questions_any_defect": 59,
+    "sensitivity_excluding_affected": {
+      "n_questions": 941,
+      "RQ1": {
+        "exact_match": {
+          "observed_difference": 0.0553,
+          "ci_low": 0.0329,
+          "ci_high": 0.0776,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 941
+        },
+        "f1": {
+          "observed_difference": 0.0734,
+          "ci_low": 0.0516,
+          "ci_high": 0.0951,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 941
+        }
+      },
+      "RQ3a": {
+        "exact_match": {
+          "observed_difference": -0.0085,
+          "ci_low": -0.0266,
+          "ci_high": 0.0096,
+          "p_value": 0.3559,
+          "significant": false,
+          "n_questions": 941
+        },
+        "f1": {
+          "observed_difference": -0.0163,
+          "ci_low": -0.0337,
+          "ci_high": 0.0006,
+          "p_value": 0.06,
+          "significant": false,
+          "n_questions": 941
+        }
+      },
+      "RQ3b": {
+        "exact_match": {
+          "observed_difference": -0.0181,
+          "ci_low": -0.0361,
+          "ci_high": -0.0011,
+          "p_value": 0.0405,
+          "significant": true,
+          "n_questions": 941
+        },
+        "f1": {
+          "observed_difference": -0.02,
+          "ci_low": -0.0369,
+          "ci_high": -0.0034,
+          "p_value": 0.0208,
+          "significant": true,
+          "n_questions": 941
+        }
+      },
+      "CTX": {
+        "exact_match": {
+          "observed_difference": 0.0818,
+          "ci_low": 0.0595,
+          "ci_high": 0.1042,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 941
+        },
+        "f1": {
+          "observed_difference": 0.1097,
+          "ci_low": 0.0876,
+          "ci_high": 0.1318,
+          "p_value": 0.0002,
+          "significant": true,
+          "n_questions": 941
+        }
+      },
+      "RQ2_interaction_em": {
+        "difference": 0.0866,
+        "yes_gap": 0.0788,
+        "no_gap": -0.0078,
+        "ci_low": 0.055,
+        "ci_high": 0.1178,
+        "p_value": 0.0002,
+        "significant": true,
+        "n_yes": 685,
+        "n_no": 256
+      }
+    }
+  },
+  "phase7_cross_system": {
+    "n_cases": 50,
+    "solved_exact_match": {
+      "baseline_a": [
+        9,
+        14,
+        30,
+        38,
+        43
+      ],
+      "baseline_b": [
+        14,
+        34,
+        43,
+        48
+      ],
+      "ablation_1": [
+        14,
+        30,
+        34,
+        43
+      ]
+    },
+    "solved_by_any_comparator": [
+      9,
+      14,
+      30,
+      34,
+      38,
+      43,
+      48
+    ],
+    "all_four_failed_exact_match": 43,
+    "escaped_failure_criterion": {
+      "baseline_a": [
+        1,
+        9,
+        14,
+        30,
+        38,
+        43
+      ],
+      "baseline_b": [
+        1,
+        14,
+        29,
+        32,
+        34,
+        39,
+        40,
+        43,
+        48
+      ],
+      "ablation_1": [
+        1,
+        14,
+        29,
+        30,
+        32,
+        34,
+        43
+      ]
+    },
+    "escaped_by_any_comparator": [
+      1,
+      9,
+      14,
+      29,
+      30,
+      32,
+      34,
+      38,
+      39,
+      40,
+      43,
+      48
+    ],
+    "all_four_failed_failure_criterion": 38,
+    "identical_answer_all_four": {
+      "n": 20,
+      "cases": [
+        6,
+        7,
+        8,
+        11,
+        16,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        27,
+        28,
+        35,
+        41,
+        44,
+        47,
+        49,
+        50
+      ]
+    }
+  }
+}

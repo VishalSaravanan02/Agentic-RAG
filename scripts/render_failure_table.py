@@ -4,10 +4,17 @@
 # Every figure in the qualitative failure-mode section is produced here, so the
 # tables regenerate from committed code rather than being transcribed by hand.
 #
-# Proportions are reported with 95% Wilson intervals, corrected for sampling 50
-# cases from a finite population of 395 failures. The intervals are wide and are
-# printed deliberately: at this sample size the categories cannot be ranked
-# against one another, and the tables should not be read as though they can.
+# Proportions are reported with 95% Wilson score intervals. No finite population
+# correction is applied: sampling 50 of 395 failures would narrow each interval
+# by about 6%, so omitting it is slightly conservative. The intervals are wide
+# and are printed deliberately: at this sample size the categories cannot be
+# ranked against one another, and the tables should not be read as though they
+# can.
+#
+# An earlier version re-centred the Wilson half-width on the raw proportion
+# k/n. That discards the interval's asymmetry and, for small counts, roughly
+# halves the upper bound (0 of 50 was reported as at most 3.3%; the Wilson
+# upper bound is 7.1%). Corrected before the dissertation was finalised.
 #
 # Usage:
 #   python scripts/render_failure_table.py                # print, save JSON and SVG
@@ -43,19 +50,15 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple:
     return centre - half, centre + half
 
 
-def fpc(n: int, N: int) -> float:
-    """Finite population correction for sampling n of N without replacement."""
-    if N <= 1:
-        return 1.0
-    return math.sqrt((N - n) / (N - 1))
-
-
 def interval(k: int, n: int, N: int) -> tuple:
-    """Wilson interval narrowed by the finite population correction."""
+    """95% Wilson score interval for k of n.
+
+    N (the population size) is accepted so that callers can report the implied
+    range of cases in the population, but it does not alter the interval: no
+    finite population correction is applied (see header).
+    """
     lo, hi = wilson(k, n)
-    half = (hi - lo) / 2 * fpc(n, N)
-    p = k / n
-    return max(0.0, p - half), min(1.0, p + half)
+    return max(0.0, lo), min(1.0, hi)
 
 
 def load() -> dict:
@@ -171,7 +174,7 @@ def render_chart(d: dict, path: str) -> str:
            f'Primary failure mode, {n} sampled Main System failures</text>',
            f'<text x="24" y="56" font-size="12.5" fill="{MUTE}">'
            f'Bars show share of sample; whiskers show 95% interval '
-           f'(Wilson, finite population correction, n={n} of N={N}).</text>']
+           f'(Wilson score, n={n} of N={N}).</text>']
 
     for pct in range(0, int(xmax * 100) + 1, 10):
         gx = x(pct / 100)
@@ -250,8 +253,8 @@ def save(d: dict, path: str) -> str:
         "n_sampled": n,
         "n_population": N,
         "sample_seed": d["meta"]["sample_seed"],
-        "interval_method": "Wilson score, 95%, with finite population correction "
-                           "for sampling n of N without replacement",
+        "interval_method": "Wilson score, 95%, no finite population correction "
+                           "(conservative; the correction would narrow intervals by about 6%)",
         "caveat": "Intervals are wide at this sample size. Categories whose intervals "
                   "overlap cannot be ranked against one another; the counts establish "
                   "that each mode occurs and is not negligible, not which is largest.",
