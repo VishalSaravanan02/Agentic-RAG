@@ -15,6 +15,9 @@
 #   rq2                    interaction tests and the second-hop counterfactual
 #   sufficiency_stops      how often D3 stopped with a gold article missing
 #   sfr_by_stop_group      Supporting Facts Recall by how the loop ended
+#   stop_condition_table   every column of the stop-condition table, both systems
+#   query_stalling         reissued queries in the reactive loop, both splits
+#   hop1_deficit_dev       the development-split hop-1 figures
 #   judge_baseline_b_vs_main  judge comparison outside the four pre-specified pairs
 #   d1_agreement           D1 run-to-run agreement between Main System and Ablation 1
 #   plan_length            plans longer than the hop budget, and their cost
@@ -379,6 +382,97 @@ def code_defects(logs):
     }
 
 
+def stop_condition_table(logs, gold):
+    """Every column of the stop-condition table, for both agentic systems.
+
+    n, Exact Match, Supporting Facts Recall and mean hops, grouped by the
+    condition that ended the loop.
+    """
+    out = {}
+    for system in ("main_system", "ablation_1"):
+        rows = logs[system]
+        out[system] = {}
+        for condition in ("sufficiency", "single_hop", "max_hops"):
+            ids = [q for q, r in rows.items()
+                   if r["stop_condition_triggered"] == condition]
+            out[system][condition] = {
+                "n": len(ids),
+                "exact_match": r4(np.mean([em(logs, system, q) for q in ids])),
+                "supporting_facts_recall": r4(np.mean(
+                    [supporting_facts_recall(rows[q], gold[q]) for q in ids])),
+                "mean_hops": r4(np.mean([rows[q]["num_hops"] for q in ids])),
+            }
+    return out
+
+
+def _repeated(queries):
+    """True when any query exactly matches one issued earlier in the same question."""
+    return len(set(queries)) < len(queries)
+
+
+def query_stalling(logs):
+    """Reissued queries in the reactive loop, for both agentic systems.
+
+    A query counts as a repeat when it exactly matches one issued earlier for
+    the same question. Two figures are reported. The stalled share counts
+    budget-exhausted questions containing at least one repeat. The repeat rate
+    counts reactive queries (those issued after the planned sub-queries were
+    exhausted) over all questions, matching the denominators used for the
+    extraction-leak defect.
+    """
+    out = {"definition": "A query exactly matching one issued earlier for the "
+                         "same question. Stalled share is over budget-exhausted "
+                         "questions; repeat rate is over reactive queries in all "
+                         "questions."}
+    for split in ("eval", "dev"):
+        out[split] = {}
+        for system in ("main_system", "ablation_1"):
+            rows = ({r["question_id"]: r for r in load_results(system, split)}
+                    if split != SPLIT else logs[system])
+            exhausted = [r for r in rows.values()
+                         if r["stop_condition_triggered"] == "max_hops"]
+            stalled = [r for r in exhausted if _repeated(r["queries_per_hop"])]
+            n_reactive = n_repeat = 0
+            for r in rows.values():
+                seen = set(r["queries_per_hop"][:max(len(r["sub_queries_generated"]), 1)])
+                for q in reactive_queries(r):
+                    n_reactive += 1
+                    if q in seen:
+                        n_repeat += 1
+                    seen.add(q)
+            out[split][system] = {
+                "n_budget_exhausted": len(exhausted),
+                "n_stalled": len(stalled),
+                "share_stalled": r4(len(stalled) / len(exhausted)),
+                "n_reactive_queries": n_reactive,
+                "n_repeat_queries": n_repeat,
+                "repeat_rate": r4(n_repeat / n_reactive),
+            }
+    return out
+
+
+def hop1_deficit_dev(logs):
+    """The development-split hop-1 figures quoted alongside the evaluation ones."""
+    rows = {s: {r["question_id"]: r for r in load_results(s, "dev")}
+            for s in ("baseline_a", "baseline_b", "ablation_1", "main_system")}
+    ids = [q for q, r in rows["main_system"].items()
+           if r["hop_necessity_classification"] == "YES"]
+    hop1 = lambda s, q: rows[s][q]["docs_retrieved_per_hop"][0]
+    out = {"n_multi_hop_subset": len(ids)}
+    for s in ("baseline_b", "ablation_1", "main_system"):
+        out[f"{s}_hop1_identical_to_baseline_a"] = sum(
+            hop1(s, q) == hop1("baseline_a", q) for q in ids)
+    out["main_system_mean_hop1_overlap_with_baseline_a"] = r4(np.mean(
+        [len(set(hop1("main_system", q)) & set(hop1("baseline_a", q))) for q in ids]))
+    out["main_system_never_issues_original_question"] = sum(
+        rows["main_system"][q]["question"] not in rows["main_system"][q]["queries_per_hop"]
+        for q in ids)
+    out["main_system_first_subquery_is_entity_lookup"] = r4(np.mean(
+        [bool(re.match(r"^(Who|What) (is|was|are|were)\b",
+                       rows["main_system"][q]["queries_per_hop"][0])) for q in ids]))
+    return out
+
+
 def phase7_cross_system(logs):
     with open(FAILURE_CASES_PATH) as f:
         cases = json.load(f)["cases"]
@@ -418,6 +512,9 @@ def main():
         "rq2": rq2(logs, gold),
         "sufficiency_stops": sufficiency_stops(logs, gold),
         "sfr_by_stop_group": sfr_by_stop_group(logs, gold),
+        "stop_condition_table": stop_condition_table(logs, gold),
+        "query_stalling": query_stalling(logs),
+        "hop1_deficit_dev": hop1_deficit_dev(logs),
         "judge_baseline_b_vs_main": judge_baseline_b_vs_main(),
         "d1_agreement": d1_agreement(logs),
         "plan_length": plan_length(logs),
