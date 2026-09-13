@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-11T18:40:03.990969",
+  "generated_at": "2026-09-13T21:28:39.457256",
   "split": "eval",
   "seed": 42,
   "n_resamples": 10000,
@@ -205,6 +205,96 @@
       "n": 415,
       "supporting_facts_recall": 0.6434
     }
+  },
+  "stop_condition_table": {
+    "main_system": {
+      "sufficiency": {
+        "n": 329,
+        "exact_match": 0.5653,
+        "supporting_facts_recall": 0.8055,
+        "mean_hops": 2.1368
+      },
+      "single_hop": {
+        "n": 256,
+        "exact_match": 0.3945,
+        "supporting_facts_recall": 0.582,
+        "mean_hops": 1.0
+      },
+      "max_hops": {
+        "n": 415,
+        "exact_match": 0.3277,
+        "supporting_facts_recall": 0.6434,
+        "mean_hops": 4.0
+      }
+    },
+    "ablation_1": {
+      "sufficiency": {
+        "n": 342,
+        "exact_match": 0.5936,
+        "supporting_facts_recall": 0.864,
+        "mean_hops": 1.5117
+      },
+      "single_hop": {
+        "n": 255,
+        "exact_match": 0.4157,
+        "supporting_facts_recall": 0.5784,
+        "mean_hops": 1.0
+      },
+      "max_hops": {
+        "n": 403,
+        "exact_match": 0.3325,
+        "supporting_facts_recall": 0.6315,
+        "mean_hops": 4.0
+      }
+    }
+  },
+  "query_stalling": {
+    "definition": "A query exactly matching one issued earlier for the same question. Stalled share is over budget-exhausted questions; repeat rate is over reactive queries in all questions.",
+    "eval": {
+      "main_system": {
+        "n_budget_exhausted": 415,
+        "n_stalled": 36,
+        "share_stalled": 0.0867,
+        "n_reactive_queries": 471,
+        "n_repeat_queries": 37,
+        "repeat_rate": 0.0786
+      },
+      "ablation_1": {
+        "n_budget_exhausted": 403,
+        "n_stalled": 245,
+        "share_stalled": 0.6079,
+        "n_reactive_queries": 1384,
+        "n_repeat_queries": 335,
+        "repeat_rate": 0.2421
+      }
+    },
+    "dev": {
+      "main_system": {
+        "n_budget_exhausted": 82,
+        "n_stalled": 8,
+        "share_stalled": 0.0976,
+        "n_reactive_queries": 88,
+        "n_repeat_queries": 8,
+        "repeat_rate": 0.0909
+      },
+      "ablation_1": {
+        "n_budget_exhausted": 81,
+        "n_stalled": 55,
+        "share_stalled": 0.679,
+        "n_reactive_queries": 275,
+        "n_repeat_queries": 82,
+        "repeat_rate": 0.2982
+      }
+    }
+  },
+  "hop1_deficit_dev": {
+    "n_multi_hop_subset": 159,
+    "baseline_b_hop1_identical_to_baseline_a": 159,
+    "ablation_1_hop1_identical_to_baseline_a": 159,
+    "main_system_hop1_identical_to_baseline_a": 7,
+    "main_system_mean_hop1_overlap_with_baseline_a": 2.1195,
+    "main_system_never_issues_original_question": 150,
+    "main_system_first_subquery_is_entity_lookup": 0.8742
   },
   "judge_baseline_b_vs_main": {
     "faithfulness": {
