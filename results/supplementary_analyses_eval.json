@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-13T21:28:39.457256",
+  "generated_at": "2026-09-13T22:32:30.756259",
   "split": "eval",
   "seed": 42,
   "n_resamples": 10000,
@@ -467,6 +467,72 @@
         "significant": true,
         "n_yes": 799,
         "n_no": 201
+      }
+    }
+  },
+  "decomposition_by_type_heldout": {
+    "n_excluded": 50,
+    "note": "Questions in the 50-case failure sample are excluded; the mechanism was derived from them.",
+    "bridge": {
+      "n": 755,
+      "exact_match": {
+        "observed_difference": -0.0252,
+        "ci_low": -0.045,
+        "ci_high": -0.0053,
+        "p_value": 0.0127,
+        "significant": true,
+        "n_questions": 755
+      },
+      "f1": {
+        "observed_difference": -0.0255,
+        "ci_low": -0.0449,
+        "ci_high": -0.0059,
+        "p_value": 0.0104,
+        "significant": true,
+        "n_questions": 755
+      }
+    },
+    "comparison": {
+      "n": 195,
+      "exact_match": {
+        "observed_difference": 0.0154,
+        "ci_low": -0.0154,
+        "ci_high": 0.0513,
+        "p_value": 0.3637,
+        "significant": false,
+        "n_questions": 195
+      },
+      "f1": {
+        "observed_difference": 0.0045,
+        "ci_low": -0.0245,
+        "ci_high": 0.0336,
+        "p_value": 0.756,
+        "significant": false,
+        "n_questions": 195
+      }
+    },
+    "difference_bridge_minus_comparison": {
+      "exact_match": {
+        "difference": -0.0406,
+        "yes_gap": -0.0252,
+        "no_gap": 0.0154,
+        "ci_low": -0.0796,
+        "ci_high": -0.0017,
+        "p_value": 0.0406,
+        "significant": true,
+        "n_yes": 755,
+        "n_no": 195
+      },
+      "f1": {
+        "difference": -0.0301,
+        "yes_gap": -0.0255,
+        "no_gap": 0.0045,
+        "ci_low": -0.0648,
+        "ci_high": 0.0055,
+        "p_value": 0.0944,
+        "significant": false,
+        "n_yes": 755,
+        "n_no": 195
       }
     }
   },

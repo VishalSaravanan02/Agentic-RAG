@@ -23,6 +23,7 @@
 #   plan_length            plans longer than the hop budget, and their cost
 #   decomposition_fallback questions where D2 fell back to the original question
 #   decomposition_by_type  Main System vs Ablation 1 on bridge and comparison questions
+#   decomposition_by_type_heldout  the same test with the 50 coded cases removed
 #   retrieval_volume       mean distinct chunks presented to synthesis
 #   code_defects           questions touched by the three known defects, and a
 #                          sensitivity check excluding them
@@ -323,6 +324,35 @@ def decomposition_by_type(logs, gold):
     return out
 
 
+def decomposition_by_type_heldout(logs, gold):
+    """decomposition_by_type, re-run with the 50 coded cases removed.
+
+    The mechanism behind the bridge/comparison split was identified by reading
+    the 50 sampled failures, which are drawn from this same evaluation run.
+    Re-testing on the questions that played no part in generating the
+    hypothesis separates the prediction from the evidence that suggested it.
+    """
+    with open(FAILURE_CASES_PATH) as f:
+        coded = {c["question_id"] for c in json.load(f)["cases"]}
+    out = {"n_excluded": len(coded),
+           "note": "Questions in the 50-case failure sample are excluded; the "
+                   "mechanism was derived from them."}
+    types = {t: sorted(q for q in gold
+                       if gold[q]["type"] == t and q not in coded)
+             for t in ["bridge", "comparison"]}
+    for t, ids in types.items():
+        out[t] = {"n": len(ids),
+                  **{m: paired(logs, "main_system", "ablation_1", ids, m)
+                     for m in ["exact_match", "f1"]}}
+    out["difference_bridge_minus_comparison"] = {
+        m: summarise(interaction_test(records(logs, "main_system", types["bridge"]),
+                                      records(logs, "ablation_1", types["bridge"]),
+                                      records(logs, "main_system", types["comparison"]),
+                                      records(logs, "ablation_1", types["comparison"]), fn))
+        for m, fn in [("exact_match", exact_match), ("f1", f1_score)]}
+    return out
+
+
 def retrieval_volume(logs):
     out = {}
     for s in SYSTEMS:
@@ -520,6 +550,7 @@ def main():
         "plan_length": plan_length(logs),
         "decomposition_fallback": decomposition_fallback(logs),
         "decomposition_by_type": decomposition_by_type(logs, gold),
+        "decomposition_by_type_heldout": decomposition_by_type_heldout(logs, gold),
         "retrieval_volume": retrieval_volume(logs),
         "code_defects": code_defects(logs),
         "phase7_cross_system": phase7_cross_system(logs),
